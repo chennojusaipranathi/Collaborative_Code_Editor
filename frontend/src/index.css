@@ -1,1 +1,34 @@
 @import "tailwindcss";
+
+/* Light theme values */
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+}
+
+/* Dark theme values: active when <html> has class="dark" */
+.dark {
+  --bg: #0b0f1a;
+  --surface: #121829;
+  --border: #222b45;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+}
+
+/* Turn the variables into Tailwind classes: bg-app, bg-surface, border-line, text-ink, text-muted */
+@theme inline {
+  --color-app: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
