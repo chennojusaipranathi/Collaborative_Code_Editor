@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import roomRoutes from "./routes/roomRoutes.js";
 import { apiLimiter } from "./middleware/rateLimit.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
@@ -28,6 +29,8 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
+
+app.use("/api/rooms", roomRoutes);
 
 // These two must come last, in this order
 app.use(notFound);
