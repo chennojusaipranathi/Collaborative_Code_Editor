@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import RoomPlaceholder from "./pages/RoomPlaceholder";
 
 export default function App() {
   return (
@@ -17,6 +18,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/room/:roomId"
+        element={
+          <ProtectedRoute>
+            <RoomPlaceholder />
           </ProtectedRoute>
         }
       />
