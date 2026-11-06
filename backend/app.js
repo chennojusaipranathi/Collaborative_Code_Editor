@@ -1,23 +1,31 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import mongoose from "mongoose";
+import { env } from "./config/env.js";
+import { connectDB } from "./config/db.js";
 
 const app = express();
-const PORT = Number(process.env.PORT) || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
+// Allow only our frontend to call this API
+app.use(cors({ origin: env.clientUrl }));
+
+// Let Express read JSON request bodies
 app.use(express.json());
 
+// Health check: now also reports the database state
 app.get("/api/health", (_req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1; // 1 means connected
   res.status(200).json({
     status: "ok",
     service: "codesync-backend",
+    database: dbConnected ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`CodeSync backend running on http://localhost:${PORT}`);
+// Connect to the database first, then start accepting requests
+await connectDB();
+
+app.listen(env.port, () => {
+  console.log(`CodeSync backend running on http://localhost:${env.port}`);
 });
