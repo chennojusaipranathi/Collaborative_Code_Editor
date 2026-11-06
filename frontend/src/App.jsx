@@ -6,6 +6,8 @@ import Dashboard from "./pages/Dashboard";
 import EditorPage from "./pages/EditorPage";
 import HistoryPage from "./pages/HistoryPage";
 import ClassroomPage from "./pages/ClassroomPage";
+import ExamPage from "./pages/ExamPage";
+import SubmissionsPage from "./pages/SubmissionsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
@@ -37,6 +39,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/room/:roomId/exam"
+        element={
+          <ProtectedRoute>
+            <ExamPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/room/:roomId/submissions"
+        element={
+          <ProtectedRoute>
+            <SubmissionsPage />
           </ProtectedRoute>
         }
       />
