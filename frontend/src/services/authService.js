@@ -1,34 +1,21 @@
-// MOCK auth service. In Phase 2 we replace the bodies of these functions
-// with real calls to the backend. The function names and return shapes stay the same.
+// REAL auth service. Same function names as the old mock, so the pages don't change.
+import { request } from "./api";
 
 const STORAGE_KEY = "codesync-session";
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function register({ name, email, password, role }) {
-  await delay(600); // pretend the network is slow
-  if (!name || !email || !password) {
-    throw new Error("All fields are required");
-  }
-  const user = { id: crypto.randomUUID(), name, email, role };
-  return { user, token: "mock-token" };
+export function register({ name, email, password, role }) {
+  return request("/api/auth/register", { method: "POST", body: { name, email, password, role } });
 }
 
-export async function login({ email, password }) {
-  await delay(600);
-  if (!email || !password) {
-    throw new Error("Email and password are required");
-  }
-  // Mock: any login works. The name comes from the email.
-  const user = {
-    id: "mock-user-1",
-    name: email.split("@")[0],
-    email,
-    role: "student",
-  };
-  return { user, token: "mock-token" };
+export function login({ email, password }) {
+  return request("/api/auth/login", { method: "POST", body: { email, password } });
 }
 
-// Session helpers: keep the logged-in user after a page refresh
+// Asks the server who this token belongs to (also proves the token is still valid)
+export function getMe(token) {
+  return request("/api/auth/me", { token });
+}
+
 export function saveSession(session) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));

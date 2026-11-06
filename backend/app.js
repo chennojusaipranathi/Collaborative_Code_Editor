@@ -3,6 +3,8 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
@@ -22,6 +24,13 @@ app.get("/api/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.use("/api/auth", authRoutes);
+
+// Must be registered after all routes
+app.use(errorHandler);
+
+
 
 // Connect to the database first, then start accepting requests
 await connectDB();

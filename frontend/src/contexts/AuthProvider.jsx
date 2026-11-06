@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthContext } from "./authContext";
 import * as authService from "../services/authService";
 
 export default function AuthProvider({ children }) {
-  // Read any saved session once, when the app starts
   const [session, setSession] = useState(() => authService.loadSession());
+
+  // On startup, confirm the saved token is still valid
+  useEffect(() => {
+    const saved = authService.loadSession();
+    if (!saved) return;
+
+    authService.getMe(saved.token).catch((err) => {
+      // Only log out when the server says the token is bad.
+      // If the server is just offline, keep the session.
+      if (err.status === 401) {
+        authService.clearSession();
+        setSession(null);
+      }
+    });
+  }, []);
 
   const login = async (credentials) => {
     const result = await authService.login(credentials);
