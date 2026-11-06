@@ -5,7 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/common/ProtectedRoute";
-import RoomPlaceholder from "./pages/RoomPlaceholder";
+import EditorPage from "./pages/EditorPage";
 
 export default function App() {
   return (
@@ -25,7 +25,7 @@ export default function App() {
         path="/room/:roomId"
         element={
           <ProtectedRoute>
-            <RoomPlaceholder />
+            <EditorPage />
           </ProtectedRoute>
         }
       />

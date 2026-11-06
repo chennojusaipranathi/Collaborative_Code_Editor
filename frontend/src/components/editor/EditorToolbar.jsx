@@ -1,0 +1,59 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Copy, Check, Play, Loader2 } from "lucide-react";
+import ThemeToggle from "../common/ThemeToggle";
+import { ROOM_MODES } from "../../utils/roomModes";
+import { languageFromFileName } from "../../utils/fileLanguage";
+
+export default function EditorToolbar({ room, activeFile, running, onRun }) {
+  const [copied, setCopied] = useState(false);
+  const mode = ROOM_MODES[room.mode];
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(room.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard can be blocked; the code is still visible on screen
+    }
+  };
+
+  return (
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-surface px-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link to="/dashboard" aria-label="Back to dashboard" className="text-muted hover:text-ink">
+          <ArrowLeft size={18} />
+        </Link>
+        <h1 className="truncate text-sm font-semibold text-ink">{room.name}</h1>
+        <span className={`hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline ${mode.color}`}>
+          {mode.label}
+        </span>
+        <button
+          onClick={copyCode}
+          className="hidden items-center gap-1 rounded border border-line px-2 py-0.5 font-mono text-xs text-muted hover:text-ink sm:flex"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {room.code}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {activeFile && (
+          <span className="hidden text-xs text-muted md:inline">
+            {languageFromFileName(activeFile.name)}
+          </span>
+        )}
+        <button
+          onClick={onRun}
+          disabled={running || !activeFile}
+          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-400 disabled:opacity-50"
+        >
+          {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          {running ? "Running" : "Run"}
+        </button>
+        <ThemeToggle />
+      </div>
+    </header>
+  );
+}
