@@ -4,19 +4,20 @@ import mongoose from "mongoose";
 import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
-import { errorHandler } from "./middleware/errorHandler.js";
+import { apiLimiter } from "./middleware/rateLimit.js";
+import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
 // Allow only our frontend to call this API
 app.use(cors({ origin: env.clientUrl }));
 
-// Let Express read JSON request bodies
-app.use(express.json());
+// Read JSON bodies, but refuse huge ones
+app.use(express.json({ limit: "100kb" }));
 
-// Health check: now also reports the database state
+// Health check: reports database state (not rate limited, monitors call it)
 app.get("/api/health", (_req, res) => {
-  const dbConnected = mongoose.connection.readyState === 1; // 1 means connected
+  const dbConnected = mongoose.connection.readyState === 1;
   res.status(200).json({
     status: "ok",
     service: "codesync-backend",
@@ -25,14 +26,13 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
 
-// Must be registered after all routes
+// These two must come last, in this order
+app.use(notFound);
 app.use(errorHandler);
 
-
-
-// Connect to the database first, then start accepting requests
 await connectDB();
 
 app.listen(env.port, () => {
