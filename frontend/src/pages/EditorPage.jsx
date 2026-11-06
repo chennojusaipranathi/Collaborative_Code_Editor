@@ -69,7 +69,7 @@ function Workspace({ roomId }) {
 
   return (
     <div className="flex h-screen flex-col bg-app">
-      <EditorToolbar room={ws.room} activeFile={ws.activeFile} running={running} onRun={handleRun} />
+      <EditorToolbar room={ws.room} activeFile={ws.activeFile} running={running} onRun={handleRun}  isTeacher={user.role === "teacher"} />
 
       <div className="flex min-h-0 flex-1">
         <FileExplorer

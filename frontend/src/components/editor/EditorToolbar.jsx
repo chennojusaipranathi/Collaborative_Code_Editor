@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Copy, Check, Play, Loader2 } from "lucide-react";
+import { ArrowLeft, Copy, Check, Play, Loader2, History, Eye } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 import { ROOM_MODES } from "../../utils/roomModes";
 import { languageFromFileName } from "../../utils/fileLanguage";
 
-export default function EditorToolbar({ room, activeFile, running, onRun }) {
+const linkClass =
+  "hidden items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:text-ink sm:flex";
+
+export default function EditorToolbar({ room, activeFile, running, onRun, isTeacher }) {
   const [copied, setCopied] = useState(false);
   const mode = ROOM_MODES[room.mode];
 
@@ -44,6 +47,16 @@ export default function EditorToolbar({ room, activeFile, running, onRun }) {
             {languageFromFileName(activeFile.name)}
           </span>
         )}
+
+        <Link to={`/room/${room.id}/history`} className={linkClass}>
+          <History size={14} /> History
+        </Link>
+        {isTeacher && room.mode === "classroom" && (
+          <Link to={`/room/${room.id}/monitor`} className={linkClass}>
+            <Eye size={14} /> Monitor
+          </Link>
+        )}
+
         <button
           onClick={onRun}
           disabled={running || !activeFile}
