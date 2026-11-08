@@ -13,6 +13,7 @@ import EmptyState from "../components/common/EmptyState";
 import Button from "../components/common/Button";
 import { languageFromFileName } from "../utils/fileLanguage";
 import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
+import useRoomSocket from "../hooks/useRoomSocket";
 
 
 // key={roomId} makes React start fresh when you move to a different room
@@ -24,11 +25,12 @@ export default function EditorPage() {
 function Workspace({ roomId }) {
   const { user } = useAuth();
   const ws = useWorkspace(roomId);
+  const live = useRoomSocket(roomId);
 
   const [output, setOutput] = useState([]);
   const [stdin, setStdin] = useState("");
   const [running, setRunning] = useState(false);
-    const [problems, setProblems] = useState([]);
+  const [problems, setProblems] = useState([]);
   const [settings, setSettings] = useState(loadEditorSettings);
   const editorRef = useRef(null); // holds the Monaco editor instance
 
@@ -87,25 +89,26 @@ function Workspace({ roomId }) {
     setRunning(false);
   };
 
-  // The server list already includes the current user, so just mark which one is "you"
-  const people = ws.participants.map((p) =>
-    p.id === user.id ? { ...p, name: `${p.name} (you)`, online: true } : p
-  );
-
+  const onlineIds = new Set(live.online.map((u) => u.id));
+  const people = ws.participants.map((p) => ({
+    ...p,
+    name: p.id === user.id ? `${p.name} (you)` : p.name,
+    online: onlineIds.has(p.id),
+  }));
   return (
     <div className="flex h-screen flex-col bg-app">
       <EditorToolbar
-  room={ws.room}
-  activeFile={ws.activeFile}
-  running={running}
-  onRun={handleRun}
-  isTeacher={user.role === "teacher"}
-  saveState={ws.saveState}
-  settings={settings}
-  onSettingsChange={changeSettings}
-  onFormat={handleFormat}
-  canEdit={ws.canEdit}
-/>
+        room={ws.room}
+        activeFile={ws.activeFile}
+        running={running}
+        onRun={handleRun}
+        isTeacher={user.role === "teacher"}
+        saveState={ws.saveState}
+        settings={settings}
+        onSettingsChange={changeSettings}
+        onFormat={handleFormat}
+        canEdit={ws.canEdit}
+      />
 
       <div className="flex min-h-0 flex-1">
         <FileExplorer
@@ -125,15 +128,15 @@ function Workspace({ roomId }) {
             onSelect={ws.openFile}
             onClose={ws.closeTab}
           />
-           <CodeArea
-  file={ws.activeFile}
-  onChange={ws.updateContent}
-  readOnly={!ws.canEdit}
-  editorTheme={settings.theme}
-  fontSize={settings.fontSize}
-  onMount={(editor) => { editorRef.current = editor; }}
-  onProblems={handleProblems}
-/>
+          <CodeArea
+            file={ws.activeFile}
+            onChange={ws.updateContent}
+            readOnly={!ws.canEdit}
+            editorTheme={settings.theme}
+            fontSize={settings.fontSize}
+            onMount={(editor) => { editorRef.current = editor; }}
+            onProblems={handleProblems}
+          />
           <BottomPanel
             output={output}
             stdin={stdin}

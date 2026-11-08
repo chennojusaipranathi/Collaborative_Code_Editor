@@ -7,6 +7,8 @@ import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import { apiLimiter } from "./middleware/rateLimit.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import http from "http";
+import { initSockets } from "./sockets/index.js";
 
 const app = express();
 
@@ -38,6 +40,9 @@ app.use(errorHandler);
 
 await connectDB();
 
-app.listen(env.port, () => {
+const server = http.createServer(app);
+initSockets(server);
+
+server.listen(env.port, () => {
   console.log(`CodeSync backend running on http://localhost:${env.port}`);
 });
