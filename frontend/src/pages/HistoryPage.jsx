@@ -58,9 +58,10 @@ function HistoryContent({ roomId, data, onCreate, onRestore }) {
   const selected = data.snapshots.find((s) => s.id === selectedId) ?? null;
 
   // Recalculated only when the selected snapshot or the current code changes
+  const current = data.current;
   const rows = useMemo(
-    () => (selected ? diffLines(selected.content, data.current) : []),
-    [selected, data.current]
+    () => (selected ? diffLines(selected.content, current) : []),
+    [selected, current]
   );
   const added = rows.filter((r) => r.type === "added").length;
   const removed = rows.filter((r) => r.type === "removed").length;

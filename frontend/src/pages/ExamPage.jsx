@@ -102,8 +102,12 @@ function ExamWorkspace({ roomId, user, data }) {
 
   // Auto-submit the moment the timer reaches zero (the ref blocks repeats)
   useEffect(() => {
-    if (timeUp) submit("timeout");
-  });
+    if (!timeUp) return;
+    // Run in a timer callback so setState is not called synchronously in the effect
+    const id = setTimeout(() => submit("timeout"), 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp]);
 
   // MOCK run: real execution (Judge0) arrives in Phase 7
   const handleRun = () => {
