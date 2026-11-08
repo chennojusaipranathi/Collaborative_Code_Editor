@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FolderX } from "lucide-react";
 import useAuth from "../hooks/useAuth";
@@ -12,6 +12,8 @@ import ParticipantsPanel from "../components/editor/ParticipantsPanel";
 import EmptyState from "../components/common/EmptyState";
 import Button from "../components/common/Button";
 import { languageFromFileName } from "../utils/fileLanguage";
+import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
+
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -26,6 +28,32 @@ function Workspace({ roomId }) {
   const [output, setOutput] = useState([]);
   const [stdin, setStdin] = useState("");
   const [running, setRunning] = useState(false);
+    const [problems, setProblems] = useState([]);
+  const [settings, setSettings] = useState(loadEditorSettings);
+  const editorRef = useRef(null); // holds the Monaco editor instance
+
+  const changeSettings = (next) => {
+    setSettings(next);
+    saveEditorSettings(next);
+  };
+
+  const handleFormat = () => {
+    editorRef.current?.getAction("editor.action.formatDocument")?.run();
+  };
+
+  // Monaco gives markers with severity numbers: 8 = error, 4 = warning
+  const handleProblems = (markers) => {
+    setProblems(
+      markers
+        .filter((m) => m.severity >= 4)
+        .map((m) => ({
+          message: m.message,
+          line: m.startLineNumber,
+          column: m.startColumn,
+          severity: m.severity === 8 ? "error" : "warning",
+        }))
+    );
+  };
 
   if (ws.loading) {
     return (
@@ -59,11 +87,6 @@ function Workspace({ roomId }) {
     setRunning(false);
   };
 
-  const problems =
-    ws.activeFile && ws.activeFile.content.trim() === ""
-      ? [`${ws.activeFile.name} is empty`]
-      : [];
-
   // The server list already includes the current user, so just mark which one is "you"
   const people = ws.participants.map((p) =>
     p.id === user.id ? { ...p, name: `${p.name} (you)`, online: true } : p
@@ -71,7 +94,18 @@ function Workspace({ roomId }) {
 
   return (
     <div className="flex h-screen flex-col bg-app">
-      <EditorToolbar room={ws.room} activeFile={ws.activeFile} running={running} onRun={handleRun} isTeacher={user.role === "teacher"} saveState={ws.saveState} />
+      <EditorToolbar
+  room={ws.room}
+  activeFile={ws.activeFile}
+  running={running}
+  onRun={handleRun}
+  isTeacher={user.role === "teacher"}
+  saveState={ws.saveState}
+  settings={settings}
+  onSettingsChange={changeSettings}
+  onFormat={handleFormat}
+  canEdit={ws.canEdit}
+/>
 
       <div className="flex min-h-0 flex-1">
         <FileExplorer
@@ -91,7 +125,15 @@ function Workspace({ roomId }) {
             onSelect={ws.openFile}
             onClose={ws.closeTab}
           />
-          <CodeArea file={ws.activeFile} onChange={ws.updateContent} readOnly={!ws.canEdit} />
+           <CodeArea
+  file={ws.activeFile}
+  onChange={ws.updateContent}
+  readOnly={!ws.canEdit}
+  editorTheme={settings.theme}
+  fontSize={settings.fontSize}
+  onMount={(editor) => { editorRef.current = editor; }}
+  onProblems={handleProblems}
+/>
           <BottomPanel
             output={output}
             stdin={stdin}

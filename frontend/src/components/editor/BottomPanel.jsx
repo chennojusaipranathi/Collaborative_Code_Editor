@@ -53,12 +53,14 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
           />
         )}
 
-        {tab === "Problems" &&
+                 {tab === "Problems" &&
           (problems.length === 0 ? (
             <p className="text-muted">No problems detected.</p>
           ) : (
-            problems.map((p) => (
-              <p key={p} className="text-amber-400">{p}</p>
+            problems.map((p, i) => (
+              <p key={i} className={p.severity === "error" ? "text-red-400" : "text-amber-400"}>
+                [{p.severity}] Line {p.line}, col {p.column}: {p.message}
+              </p>
             ))
           ))}
       </div>

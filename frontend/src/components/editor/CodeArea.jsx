@@ -1,7 +1,7 @@
 import { FileX } from "lucide-react";
 import MonacoEditor from "./MonacoEditor";
 
-export default function CodeArea({ file, onChange, readOnly = false }) {
+export default function CodeArea({ file, onChange, readOnly = false, ...editorProps }) {
   if (!file) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted">
@@ -13,7 +13,7 @@ export default function CodeArea({ file, onChange, readOnly = false }) {
 
   return (
     <div className="min-h-0 flex-1">
-      <MonacoEditor file={file} onChange={onChange} readOnly={readOnly} />
+      <MonacoEditor file={file} onChange={onChange} readOnly={readOnly} {...editorProps} />
     </div>
   );
 }
