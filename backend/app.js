@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({ origin: env.clientUrl }));
 
 // Read JSON bodies, but refuse huge ones
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1mb" }));
 
 // Health check: reports database state (not rate limited, monitors call it)
 app.get("/api/health", (_req, res) => {

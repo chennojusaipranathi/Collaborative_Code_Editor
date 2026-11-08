@@ -2,6 +2,8 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import Room from "../models/Room.js";
 import RoomParticipant from "../models/RoomParticipant.js";
+import File from "../models/File.js";
+import { STARTER_FILES } from "../utils/starterFiles.js";
 
 // Random 6-character code, e.g. "K7QX2M". Letters that look alike are left out.
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -43,6 +45,8 @@ export async function createRoom(req, res) {
   if (!room) return res.status(500).json({ message: "Could not generate a room code. Try again." });
 
   await RoomParticipant.create({ room: room._id, user: req.user.id, role: "owner" });
+    const starter = STARTER_FILES[language];
+  await File.create({ room: room._id, name: starter.name, content: starter.content, createdBy: req.user.id });
 
   res.status(201).json({ room: publicRoom(room, "owner", 1) });
 }
@@ -93,4 +97,16 @@ export async function getRoom(req, res) {
 
   const count = await RoomParticipant.countDocuments({ room: roomId });
   res.json({ room: publicRoom(membership.room, membership.role, count) });
+}
+
+export async function listParticipants(req, res) {
+  const members = await RoomParticipant.find({ room: req.params.roomId })
+    .populate("user", "name")
+    .sort({ createdAt: 1 });
+
+  res.json({
+    participants: members
+      .filter((m) => m.user)
+      .map((m) => ({ id: m.user._id, name: m.user.name, role: m.role, online: false })),
+  });
 }

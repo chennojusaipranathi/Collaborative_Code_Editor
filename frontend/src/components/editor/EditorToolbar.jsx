@@ -8,7 +8,7 @@ import { languageFromFileName } from "../../utils/fileLanguage";
 const linkClass =
     "hidden items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:text-ink sm:flex";
 
-export default function EditorToolbar({ room, activeFile, running, onRun, isTeacher }) {
+export default function EditorToolbar({ room, activeFile, running, onRun, isTeacher, saveState }) {
     const [copied, setCopied] = useState(false);
     const mode = ROOM_MODES[room.mode];
 
@@ -42,6 +42,13 @@ export default function EditorToolbar({ room, activeFile, running, onRun, isTeac
             </div>
 
             <div className="flex items-center gap-2">
+                <span
+                    className={`hidden text-xs sm:inline ${saveState === "error" ? "text-red-400" : "text-muted"}`}
+                >
+                    {saveState === "saving" && "Saving..."}
+                    {saveState === "saved" && "All changes saved"}
+                    {saveState === "error" && "Could not save"}
+                </span>
                 {activeFile && (
                     <span className="hidden text-xs text-muted md:inline">
                         {languageFromFileName(activeFile.name)}

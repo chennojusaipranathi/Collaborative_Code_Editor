@@ -64,17 +64,20 @@ function Workspace({ roomId }) {
       ? [`${ws.activeFile.name} is empty`]
       : [];
 
-  // Put the current user first in the participants list
-  const people = [{ id: user.id, name: `${user.name} (you)`, role: "owner", online: true }, ...ws.participants];
+  // The server list already includes the current user, so just mark which one is "you"
+  const people = ws.participants.map((p) =>
+    p.id === user.id ? { ...p, name: `${p.name} (you)`, online: true } : p
+  );
 
   return (
     <div className="flex h-screen flex-col bg-app">
-      <EditorToolbar room={ws.room} activeFile={ws.activeFile} running={running} onRun={handleRun}  isTeacher={user.role === "teacher"} />
+      <EditorToolbar room={ws.room} activeFile={ws.activeFile} running={running} onRun={handleRun} isTeacher={user.role === "teacher"} saveState={ws.saveState} />
 
       <div className="flex min-h-0 flex-1">
         <FileExplorer
           files={ws.files}
           activeId={ws.activeFile?.id}
+          canEdit={ws.canEdit}
           onOpen={ws.openFile}
           onCreate={ws.createFile}
           onRename={ws.renameFile}
@@ -88,7 +91,7 @@ function Workspace({ roomId }) {
             onSelect={ws.openFile}
             onClose={ws.closeTab}
           />
-          <CodeArea file={ws.activeFile} onChange={ws.updateContent} />
+          <CodeArea file={ws.activeFile} onChange={ws.updateContent} readOnly={!ws.canEdit} />
           <BottomPanel
             output={output}
             stdin={stdin}

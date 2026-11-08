@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { FileX } from "lucide-react";
 
 // TEMPORARY: a plain textarea. In Phase 4 this becomes the Monaco Editor.
-export default function CodeArea({ file, onChange }) {
+export default function CodeArea({ file, onChange , readOnly = false }) {
   const gutterRef = useRef(null);
 
   if (!file) {
@@ -36,6 +36,7 @@ export default function CodeArea({ file, onChange }) {
         onChange={(e) => onChange(file.id, e.target.value)}
         onScroll={syncScroll}
         spellCheck={false}
+        readOnly={readOnly}
         wrap="off"
         className="flex-1 resize-none bg-transparent p-3 text-ink outline-none"
       />

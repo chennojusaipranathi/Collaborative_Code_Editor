@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FilePlus, Pencil, Trash2, FileCode2 } from "lucide-react";
 
-export default function FileExplorer({ files, activeId, onOpen, onCreate, onRename, onDelete }) {
+export default function FileExplorer({ files, activeId, canEdit, onOpen, onCreate, onRename, onDelete }) {
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [value, setValue] = useState("");
@@ -27,13 +27,19 @@ export default function FileExplorer({ files, activeId, onOpen, onCreate, onRena
     setError("");
   };
 
-  // Enter confirms, Escape cancels
-  const handleKeyDown = (e) => {
+  // Enter confirms (and waits for the server), Escape cancels
+  const handleKeyDown = async (e) => {
     if (e.key === "Escape") return cancel();
     if (e.key !== "Enter") return;
-    const problem = creating ? onCreate(value) : onRename(renamingId, value);
+    const problem = creating ? await onCreate(value) : await onRename(renamingId, value);
     if (problem) setError(problem);
     else cancel();
+  };
+
+  const handleDelete = async (file) => {
+    if (!window.confirm(`Delete ${file.name}?`)) return;
+    const problem = await onDelete(file.id);
+    if (problem) window.alert(problem);
   };
 
   const inputBox = (
@@ -55,9 +61,11 @@ export default function FileExplorer({ files, activeId, onOpen, onCreate, onRena
     <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface md:flex">
       <div className="flex h-9 items-center justify-between border-b border-line px-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted">Files</span>
-        <button onClick={startCreate} aria-label="New file" className="text-muted hover:text-ink">
-          <FilePlus size={16} />
-        </button>
+        {canEdit && (
+          <button onClick={startCreate} aria-label="New file" className="text-muted hover:text-ink">
+            <FilePlus size={16} />
+          </button>
+        )}
       </div>
 
       <ul className="flex-1 overflow-y-auto py-1">
@@ -75,20 +83,16 @@ export default function FileExplorer({ files, activeId, onOpen, onCreate, onRena
                 <FileCode2 size={14} className="shrink-0" />
                 <span className="truncate">{file.name}</span>
               </button>
-              <span className="hidden gap-2 text-muted group-hover:flex">
-                <button onClick={() => startRename(file)} aria-label={`Rename ${file.name}`} className="hover:text-ink">
-                  <Pencil size={13} />
-                </button>
-                <button
-                  onClick={() => {
-                    if (window.confirm(`Delete ${file.name}?`)) onDelete(file.id);
-                  }}
-                  aria-label={`Delete ${file.name}`}
-                  className="hover:text-red-400"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </span>
+              {canEdit && (
+                <span className="hidden gap-2 text-muted group-hover:flex">
+                  <button onClick={() => startRename(file)} aria-label={`Rename ${file.name}`} className="hover:text-ink">
+                    <Pencil size={13} />
+                  </button>
+                  <button onClick={() => handleDelete(file)} aria-label={`Delete ${file.name}`} className="hover:text-red-400">
+                    <Trash2 size={13} />
+                  </button>
+                </span>
+              )}
             </li>
           )
         )}

@@ -21,3 +21,22 @@ export const createRoomSchema = z.object({
 export const joinRoomSchema = z.object({
   code: z.string().trim().toUpperCase().length(6, "Room code must be 6 characters"),
 });
+
+const fileName = z
+  .string()
+  .trim()
+  .min(1, "File name is required")
+  .max(100, "File name is too long")
+  .regex(/^[\w\-. ]+$/, "Use only letters, numbers, dots, dashes and underscores");
+
+export const createFileSchema = z.object({ name: fileName });
+
+export const updateFileSchema = z
+  .object({
+    name: fileName.optional(),
+    content: z.string().max(200000, "File is too large").optional(),
+  })
+  .refine((d) => d.name !== undefined || d.content !== undefined, {
+    message: "Nothing to update",
+  });
+  
