@@ -4,6 +4,8 @@ import { env } from "../config/env.js";
 import RoomParticipant from "../models/RoomParticipant.js";
 import { socketAuth } from "./socketAuth.js";
 import { addToRoom, removeFromRoom, getOnlineUsers } from "./presence.js";
+import { registerYjsHandlers } from "./yjsHandlers.js";
+
 
 export function initSockets(httpServer) {
   const io = new Server(httpServer, {
@@ -16,6 +18,7 @@ export function initSockets(httpServer) {
     const user = socket.data.user;
     // Rooms this socket joined, so we can clean up on disconnect
     const joined = new Set();
+        registerYjsHandlers(socket, joined);
 
     const broadcastPresence = (roomId) => {
       io.to(roomId).emit("presence:update", getOnlineUsers(roomId));

@@ -1,4 +1,3 @@
-import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FolderX } from "lucide-react";
 import useAuth from "../hooks/useAuth";
@@ -14,6 +13,8 @@ import Button from "../components/common/Button";
 import { languageFromFileName } from "../utils/fileLanguage";
 import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
 import useRoomSocket from "../hooks/useRoomSocket";
+import { useRef, useState } from "react";
+import useCollab from "../hooks/useCollab";
 
 
 // key={roomId} makes React start fresh when you move to a different room
@@ -33,6 +34,8 @@ function Workspace({ roomId }) {
   const [problems, setProblems] = useState([]);
   const [settings, setSettings] = useState(loadEditorSettings);
   const editorRef = useRef(null); // holds the Monaco editor instance
+  const [editor, setEditor] = useState(null); // triggers the collab hook when Monaco is ready
+
 
   const changeSettings = (next) => {
     setSettings(next);
@@ -56,6 +59,15 @@ function Workspace({ roomId }) {
         }))
     );
   };
+
+    useCollab({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    fileId: ws.activeFile?.id,
+    editor,
+    canEdit: ws.canEdit,
+  });
 
   if (ws.loading) {
     return (
@@ -134,7 +146,7 @@ function Workspace({ roomId }) {
             readOnly={!ws.canEdit}
             editorTheme={settings.theme}
             fontSize={settings.fontSize}
-            onMount={(editor) => { editorRef.current = editor; }}
+            onMount={(ed) => { editorRef.current = ed; setEditor(ed); }}
             onProblems={handleProblems}
           />
           <BottomPanel
