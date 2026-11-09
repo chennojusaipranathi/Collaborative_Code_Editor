@@ -36,4 +36,10 @@ export function registerChatHandlers(io, socket, joined) {
       ack?.({ ok: false, message: err.message });
     }
   });
+
+    // Relay only. Nothing is stored. Name comes from the verified token, not the client.
+  socket.on("chat:typing", ({ roomId }) => {
+    if (!joined.has(roomId)) return;
+    socket.to(roomId).emit("chat:typing", { roomId, userId: user.id, name: user.name });
+  });
 }

@@ -4,15 +4,26 @@ import { colorFor } from "../../utils/userColor";
 
 const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-export default function ChatPanel({ messages, meId, onSend, disabled }) {
+export default function ChatPanel({ messages, meId, onSend, onTyping, typing = {}, disabled }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
 
-  // Scroll to the newest message
+  // Who is typing right now (calculated on every render, not inside an effect)
+  const names = Object.values(typing);
+  const typingLabel =
+    names.length === 0
+      ? ""
+      : names.length === 1
+        ? `${names[0]} is typing...`
+        : names.length === 2
+          ? `${names[0]} and ${names[1]} are typing...`
+          : "Several people are typing...";
+
+  // Scroll to the newest message (and when the typing label appears)
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages.length, typingLabel]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -51,11 +62,16 @@ export default function ChatPanel({ messages, meId, onSend, disabled }) {
       </div>
 
       <form onSubmit={submit} className="border-t border-line p-2">
+        {/* Fixed height so the layout doesn't jump when the label appears */}
+        <p className="h-4 text-xs italic text-muted">{typingLabel}</p>
         {error && <p className="mb-1 text-xs text-red-400">{error}</p>}
         <div className="flex gap-2">
           <input
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              onTyping?.();
+            }}
             maxLength={1000}
             disabled={disabled}
             placeholder={disabled ? "Offline..." : "Message the room"}

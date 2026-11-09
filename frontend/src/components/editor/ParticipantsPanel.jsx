@@ -48,7 +48,14 @@ export default function ParticipantsPanel({ participants, chat, meId, disabled, 
           ))}
         </ul>
       ) : (
-        <ChatPanel messages={chat.messages} meId={meId} onSend={chat.send} disabled={disabled} />
+                <ChatPanel
+          messages={chat.messages}
+          meId={meId}
+          onSend={chat.send}
+          onTyping={chat.notifyTyping}
+          typing={chat.typing}
+          disabled={disabled}
+        />
       )}
     </aside>
   );
