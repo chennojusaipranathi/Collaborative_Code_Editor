@@ -13,7 +13,7 @@ import Button from "../components/common/Button";
 import { languageFromFileName } from "../utils/fileLanguage";
 import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
 import useRoomSocket from "../hooks/useRoomSocket";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import useCollab from "../hooks/useCollab";
 
 
@@ -60,14 +60,24 @@ function Workspace({ roomId }) {
     );
   };
 
-    useCollab({
+  useCollab({
     socketRef: live.socketRef,
     status: live.status,
     roomId,
     fileId: ws.activeFile?.id,
     editor,
     canEdit: ws.canEdit,
+    user,
   });
+  // Tell the server which file is open, so others can see it in the file list
+  useEffect(() => {
+    if (live.status !== "connected") return;
+    live.socketRef.current?.emit("file:focus", {
+      roomId,
+      fileId: ws.activeFile?.id ?? null,
+    });
+  }, [live.status, live.socketRef, roomId, ws.activeFile?.id]);
+
 
   if (ws.loading) {
     return (
@@ -107,6 +117,13 @@ function Workspace({ roomId }) {
     name: p.id === user.id ? `${p.name} (you)` : p.name,
     online: onlineIds.has(p.id),
   }));
+
+  // fileId -> other people currently viewing that file
+  const viewersByFile = {};
+  live.online.forEach((u) => {
+    if (u.id !== user.id && u.fileId) (viewersByFile[u.fileId] ||= []).push(u);
+  });
+
   return (
     <div className="flex h-screen flex-col bg-app">
       <EditorToolbar
@@ -127,6 +144,7 @@ function Workspace({ roomId }) {
           files={ws.files}
           activeId={ws.activeFile?.id}
           canEdit={ws.canEdit}
+          viewersByFile={viewersByFile}
           onOpen={ws.openFile}
           onCreate={ws.createFile}
           onRename={ws.renameFile}

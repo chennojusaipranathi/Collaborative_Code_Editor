@@ -22,7 +22,7 @@ export async function request(path, { method = "GET", body, token } = {}) {
   if (!response.ok) {
     // Expired or invalid token on a protected request: clear it and go to login
     if (response.status === 401 && token) {
-      localStorage.removeItem("codesync-session");
+     sessionStorage.removeItem("codesync-session");
       window.location.assign("/login");
     }
     const error = new Error(data.message || `Request failed (${response.status})`);

@@ -32,3 +32,23 @@ body {
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/* Remote cursors drawn by y-monaco. Colors and names are added per user by useCollab. */
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid;
+  height: 100%;
+  box-sizing: border-box;
+}
+.yRemoteSelectionHead::after {
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4em;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+}

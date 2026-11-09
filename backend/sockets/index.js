@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { env } from "../config/env.js";
 import RoomParticipant from "../models/RoomParticipant.js";
 import { socketAuth } from "./socketAuth.js";
-import { addToRoom, removeFromRoom, getOnlineUsers } from "./presence.js";
+import { addToRoom, removeFromRoom, getOnlineUsers, setFile } from "./presence.js";
 import { registerYjsHandlers } from "./yjsHandlers.js";
 
 
@@ -18,7 +18,7 @@ export function initSockets(httpServer) {
     const user = socket.data.user;
     // Rooms this socket joined, so we can clean up on disconnect
     const joined = new Set();
-        registerYjsHandlers(socket, joined);
+    registerYjsHandlers(socket, joined);
 
     const broadcastPresence = (roomId) => {
       io.to(roomId).emit("presence:update", getOnlineUsers(roomId));
@@ -48,6 +48,13 @@ export function initSockets(httpServer) {
       socket.leave(roomId);
       joined.delete(roomId);
       removeFromRoom(roomId, socket.id);
+      broadcastPresence(roomId);
+    });
+
+    // The client tells us which file it has open
+    socket.on("file:focus", ({ roomId, fileId }) => {
+      if (!joined.has(roomId)) return;
+      setFile(roomId, socket.id, typeof fileId === "string" ? fileId : null);
       broadcastPresence(roomId);
     });
 

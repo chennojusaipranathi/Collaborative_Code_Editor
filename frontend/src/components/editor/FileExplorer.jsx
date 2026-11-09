@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { FilePlus, Pencil, Trash2, FileCode2 } from "lucide-react";
+import { colorFor } from "../../utils/userColor";
 
-export default function FileExplorer({ files, activeId, canEdit, onOpen, onCreate, onRename, onDelete }) {
+export default function FileExplorer({ files, activeId, canEdit, viewersByFile = {}, onOpen, onCreate, onRename, onDelete }) {
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [value, setValue] = useState("");
@@ -75,13 +76,24 @@ export default function FileExplorer({ files, activeId, canEdit, onOpen, onCreat
           ) : (
             <li
               key={file.id}
-              className={`group flex items-center justify-between px-3 py-1.5 text-sm ${
-                file.id === activeId ? "bg-indigo-500/15 text-indigo-400" : "text-ink hover:bg-app"
-              }`}
+              className={`group flex items-center justify-between px-3 py-1.5 text-sm ${file.id === activeId ? "bg-indigo-500/15 text-indigo-400" : "text-ink hover:bg-app"
+                }`}
             >
               <button onClick={() => onOpen(file.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                 <FileCode2 size={14} className="shrink-0" />
                 <span className="truncate">{file.name}</span>
+                <span className="ml-auto flex shrink-0 -space-x-1">
+                  {(viewersByFile[file.id] ?? []).map((v) => (
+                    <span
+                      key={v.id}
+                      title={`${v.name} is viewing this file`}
+                      style={{ backgroundColor: colorFor(v.id) }}
+                      className="max-w-20 truncate rounded-full border border-surface px-1.5 py-0.5 text-[10px] font-medium text-white"
+                    >
+                      {v.name}
+                    </span>
+                  ))}
+                </span>
               </button>
               {canEdit && (
                 <span className="hidden gap-2 text-muted group-hover:flex">

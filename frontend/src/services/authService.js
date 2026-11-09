@@ -18,7 +18,7 @@ export function getMe(token) {
 
 export function saveSession(session) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   } catch {
     // storage blocked: user stays logged in only until refresh
   }
@@ -26,7 +26,7 @@ export function saveSession(session) {
 
 export function loadSession() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -35,7 +35,7 @@ export function loadSession() {
 
 export function clearSession() {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   } catch {
     // nothing to clear
   }

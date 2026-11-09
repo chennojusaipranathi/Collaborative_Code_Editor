@@ -43,4 +43,16 @@ export function registerYjsHandlers(socket, joined) {
       ack?.({ ok: false, message: err.message });
     }
   });
+    // Cursor and name data. It is only relayed, never stored.
+  // Viewers may send it too: cursors are not edits.
+  socket.on("awareness:update", ({ roomId, fileId, update }) => {
+    if (!joined.has(roomId)) return;
+    socket.to(roomId).emit("awareness:update", { fileId, update });
+  });
+
+  // A newcomer asks everyone to re-send their cursor state
+  socket.on("awareness:query", ({ roomId, fileId }) => {
+    if (!joined.has(roomId)) return;
+    socket.to(roomId).emit("awareness:query", { fileId });
+  });
 }

@@ -1,21 +1,25 @@
-// In-memory presence: roomId -> Map(socketId -> { id, name })
-// One user with two tabs open has two sockets, so we count by socket and
-// de-duplicate by user id when reporting.
+// In-memory presence: roomId -> Map(socketId -> { id, name, fileId })
 const rooms = new Map();
 
 export function addToRoom(roomId, socketId, user) {
   if (!rooms.has(roomId)) rooms.set(roomId, new Map());
-  rooms.get(roomId).set(socketId, user);
+  rooms.get(roomId).set(socketId, { ...user, fileId: null });
 }
 
 export function removeFromRoom(roomId, socketId) {
   const members = rooms.get(roomId);
   if (!members) return;
   members.delete(socketId);
-  if (members.size === 0) rooms.delete(roomId); // clean up empty rooms
+  if (members.size === 0) rooms.delete(roomId);
 }
 
-// List of unique online users in a room
+// Remember which file this socket is looking at (null = none)
+export function setFile(roomId, socketId, fileId) {
+  const member = rooms.get(roomId)?.get(socketId);
+  if (member) member.fileId = fileId;
+}
+
+// Unique online users, each with the file they have open
 export function getOnlineUsers(roomId) {
   const members = rooms.get(roomId);
   if (!members) return [];
