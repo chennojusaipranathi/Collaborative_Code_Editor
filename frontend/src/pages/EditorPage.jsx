@@ -15,6 +15,7 @@ import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings"
 import useRoomSocket from "../hooks/useRoomSocket";
 import { useRef, useState, useEffect } from "react";
 import useCollab from "../hooks/useCollab";
+import useChat from "../hooks/useChat";
 
 
 // key={roomId} makes React start fresh when you move to a different room
@@ -69,6 +70,16 @@ function Workspace({ roomId }) {
     canEdit: ws.canEdit,
     user,
   });
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const chat = useChat({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    panelOpen: chatOpen,
+  });
+
+
   // Tell the server which file is open, so others can see it in the file list
   useEffect(() => {
     if (live.status !== "connected") return;
@@ -132,7 +143,7 @@ function Workspace({ roomId }) {
         running={running}
         onRun={handleRun}
         isTeacher={user.role === "teacher"}
-                saveState={live.status === "connected" ? "saved" : live.status === "error" ? "error" : "offline"}
+        saveState={live.status === "connected" ? "saved" : live.status === "error" ? "error" : "offline"}
         settings={settings}
         onSettingsChange={changeSettings}
         onFormat={handleFormat}
@@ -152,7 +163,7 @@ function Workspace({ roomId }) {
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
-                    {live.status !== "connected" && (
+          {live.status !== "connected" && (
             <p className="shrink-0 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-400">
               {live.status === "error"
                 ? "Connection error. Editing is paused. Try refreshing the page."
@@ -185,7 +196,14 @@ function Workspace({ roomId }) {
           />
         </main>
 
-        <ParticipantsPanel participants={people} />
+        <ParticipantsPanel
+          participants={people}
+          chat={{ ...chat, clearUnread: chat.clearUnread }}
+          meId={user.id}
+          disabled={live.status !== "connected"}
+          onTabChange={(name) => setChatOpen(name === "chat")}
+        />
+
       </div>
     </div>
   );

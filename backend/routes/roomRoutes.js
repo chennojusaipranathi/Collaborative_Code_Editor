@@ -7,6 +7,7 @@ import { protect } from "../middleware/auth.js";
 import { requireRoomRole } from "../middleware/roomAccess.js";
 import { validate } from "../middleware/validate.js";
 import { createRoomSchema, joinRoomSchema } from "../utils/validators.js";
+import messageRoutes from "./messageRoutes.js";
 
 const router = Router();
 
@@ -18,5 +19,7 @@ router.post("/join", validate(joinRoomSchema), joinRoom);
 router.get("/:roomId", getRoom);
 router.get("/:roomId/participants", requireRoomRole("viewer"), listParticipants);
 router.use("/:roomId/files", fileRoutes);
+router.use("/:roomId/messages", messageRoutes);
+
 
 export default router;
