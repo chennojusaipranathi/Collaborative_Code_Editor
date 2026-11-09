@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import File from "../models/File.js";
 import Room from "../models/Room.js";
+import { dropDoc } from "../sockets/docStore.js";
 
 function publicFile(file) {
   return { id: file._id, name: file.name, content: file.content };
@@ -62,7 +63,11 @@ export async function deleteFile(req, res) {
   }
 
   const result = await File.deleteOne({ _id: fileId, room: roomId });
-  if (result.deletedCount === 0) return res.status(404).json({ message: "File not found" });
+  if (result.deletedCount === 0)
+  {
+      dropDoc(roomId, fileId);
+     return res.status(404).json({ message: "File not found" });
+  }
 
   res.json({ message: "File deleted" });
 }

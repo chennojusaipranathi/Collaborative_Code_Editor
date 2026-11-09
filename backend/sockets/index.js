@@ -18,7 +18,7 @@ export function initSockets(httpServer) {
     const user = socket.data.user;
     // Rooms this socket joined, so we can clean up on disconnect
     const joined = new Set();
-    registerYjsHandlers(socket, joined);
+     const cleanupYjs = registerYjsHandlers(socket, joined);
 
     const broadcastPresence = (roomId) => {
       io.to(roomId).emit("presence:update", getOnlineUsers(roomId));
@@ -60,6 +60,7 @@ export function initSockets(httpServer) {
 
     // "disconnect" fires for closed tabs, lost network, and server restarts
     socket.on("disconnect", () => {
+      cleanupYjs();
       for (const roomId of joined) {
         removeFromRoom(roomId, socket.id);
         broadcastPresence(roomId);

@@ -103,20 +103,10 @@ export default function useWorkspace(roomId) {
     }
   };
 
-  // Update the screen instantly, then save to the server after a short pause
+    // The server saves content now (from the shared Yjs document).
+  // This only keeps the local copy fresh for things like the Problems panel.
   const updateContent = (id, content) => {
     setFiles((current) => current.map((f) => (f.id === id ? { ...f, content } : f)));
-    setSaveState("saving");
-
-    clearTimeout(timers.current[id]);
-    timers.current[id] = setTimeout(async () => {
-      try {
-        await workspaceService.saveContent(roomId, id, content);
-        setSaveState("saved");
-      } catch {
-        setSaveState("error");
-      }
-    }, SAVE_DELAY_MS);
   };
 
   const activeFile = files.find((f) => f.id === activeId) ?? null;

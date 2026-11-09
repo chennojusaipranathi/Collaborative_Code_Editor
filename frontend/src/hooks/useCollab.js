@@ -95,6 +95,8 @@ export default function useCollab({ socketRef, status, roomId, fileId, editor, c
     });
 
     return () => {
+        // Tell the server we closed this file, so it can save and free memory
+         socket.emit("yjs:unsync", { roomId, fileId });
       cancelled = true;
       // Remove our cursor for everyone else BEFORE tearing down
       removeAwarenessStates(awareness, [doc.clientID], "cleanup");

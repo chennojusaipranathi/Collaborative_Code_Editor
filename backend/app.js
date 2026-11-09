@@ -9,6 +9,7 @@ import { apiLimiter } from "./middleware/rateLimit.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import http from "http";
 import { initSockets } from "./sockets/index.js";
+import { flushAll } from "./sockets/docStore.js";
 
 const app = express();
 
@@ -45,4 +46,10 @@ initSockets(server);
 
 server.listen(env.port, () => {
   console.log(`CodeSync backend running on http://localhost:${env.port}`);
+});
+
+// Save open documents when the server is stopped (Ctrl + C)
+process.on("SIGINT", async () => {
+  await flushAll();
+  process.exit(0);
 });

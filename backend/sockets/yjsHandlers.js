@@ -1,58 +1,68 @@
 import * as Y from "yjs";
 import RoomParticipant from "../models/RoomParticipant.js";
-import { getDoc } from "./docStore.js";
+import { getDoc, markDirty, watch, unwatch } from "./docStore.js";
 
-// Registers the Yjs events for one connected socket.
-// `joined` is the set of room ids this socket has joined (from index.js).
+// `joined` is the set of room ids this socket joined (from index.js).
+// Returns a cleanup function to call on disconnect.
 export function registerYjsHandlers(socket, joined) {
   const user = socket.data.user;
+  const watching = new Set(); // "roomId:fileId" pairs this socket has open
 
-  // Loads the role fresh each time, so role changes apply immediately
   async function roleIn(roomId) {
     const m = await RoomParticipant.findOne({ room: roomId, user: user.id });
     return m?.role ?? null;
   }
 
-  // Client opens a file: send the current full state
   socket.on("yjs:sync", async ({ roomId, fileId }, ack) => {
     try {
       if (!joined.has(roomId)) throw new Error("Join the room first");
       const doc = await getDoc(roomId, fileId);
+      watch(roomId, fileId, socket.id);
+      watching.add(`${roomId}:${fileId}`);
       ack?.({ ok: true, state: Y.encodeStateAsUpdate(doc) });
     } catch (err) {
       ack?.({ ok: false, message: err.message });
     }
   });
 
-  // Client edited: apply to the server copy, then relay to everyone else
+  // The client closed a file (switched tabs)
+  socket.on("yjs:unsync", ({ roomId, fileId }) => {
+    if (watching.delete(`${roomId}:${fileId}`)) unwatch(roomId, fileId, socket.id);
+  });
+
   socket.on("yjs:update", async ({ roomId, fileId, update }, ack) => {
     try {
       if (!joined.has(roomId)) throw new Error("Join the room first");
 
-      // Viewers may read but never write
       const role = await roleIn(roomId);
       if (!role || role === "viewer") throw new Error("You cannot edit in this room");
 
       const doc = await getDoc(roomId, fileId);
       Y.applyUpdate(doc, new Uint8Array(update), "client");
+      markDirty(roomId, fileId);
 
-      // socket.to(...) sends to everyone in the room EXCEPT the sender
       socket.to(roomId).emit("yjs:update", { fileId, update });
       ack?.({ ok: true });
     } catch (err) {
       ack?.({ ok: false, message: err.message });
     }
   });
-    // Cursor and name data. It is only relayed, never stored.
-  // Viewers may send it too: cursors are not edits.
+
   socket.on("awareness:update", ({ roomId, fileId, update }) => {
     if (!joined.has(roomId)) return;
     socket.to(roomId).emit("awareness:update", { fileId, update });
   });
 
-  // A newcomer asks everyone to re-send their cursor state
   socket.on("awareness:query", ({ roomId, fileId }) => {
     if (!joined.has(roomId)) return;
     socket.to(roomId).emit("awareness:query", { fileId });
   });
+
+  return function cleanup() {
+    for (const pair of watching) {
+      const [roomId, fileId] = pair.split(":");
+      unwatch(roomId, fileId, socket.id);
+    }
+    watching.clear();
+  };
 }
