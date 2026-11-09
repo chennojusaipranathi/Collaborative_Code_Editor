@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as workspaceService from "../services/workspaceService";
 
-const SAVE_DELAY_MS = 800; // wait until the user pauses typing, then save
 
 export default function useWorkspace(roomId) {
   const [room, setRoom] = useState(null);
@@ -11,7 +10,7 @@ export default function useWorkspace(roomId) {
   const [activeId, setActiveId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [saveState, setSaveState] = useState("saved"); // "saved" | "saving" | "error"
+  const [saveState] = useState("saved");
 
   const timers = useRef({}); // fileId -> pending save timer
 

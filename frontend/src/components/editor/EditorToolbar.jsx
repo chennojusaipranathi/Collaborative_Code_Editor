@@ -45,11 +45,12 @@ export default function EditorToolbar({ room, activeFile, running, onRun, isTeac
 
             <div className="flex items-center gap-2">
                 <span
-                    className={`hidden text-xs sm:inline ${saveState === "error" ? "text-red-400" : "text-muted"}`}
+                    className={`hidden text-xs sm:inline ${saveState === "error" ? "text-red-400" : saveState === "offline" ? "text-amber-400" : "text-muted"
+                        }`}
                 >
-                    {saveState === "saving" && "Saving..."}
-                    {saveState === "saved" && "All changes saved"}
-                    {saveState === "error" && "Could not save"}
+                    {saveState === "saved" && "Live · changes saved automatically"}
+                    {saveState === "offline" && "Offline · reconnecting..."}
+                    {saveState === "error" && "Connection error"}
                 </span>
                 {activeFile && (
                     <span className="hidden text-xs text-muted md:inline">

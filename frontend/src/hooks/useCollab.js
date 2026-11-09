@@ -56,6 +56,7 @@ export default function useCollab({ socketRef, status, roomId, fileId, editor, c
 
     // ---- awareness (cursors) ----
     const onAwarenessChange = ({ added, updated, removed }, origin) => {
+              if (!socket.connected) return;
       renderCursorStyles(awareness, styleEl);
       if (origin === "remote") return; // never send back what we just received
       const changed = added.concat(updated, removed);
@@ -96,7 +97,7 @@ export default function useCollab({ socketRef, status, roomId, fileId, editor, c
 
     return () => {
         // Tell the server we closed this file, so it can save and free memory
-         socket.emit("yjs:unsync", { roomId, fileId });
+            if (socket.connected) socket.emit("yjs:unsync", { roomId, fileId });
       cancelled = true;
       // Remove our cursor for everyone else BEFORE tearing down
       removeAwarenessStates(awareness, [doc.clientID], "cleanup");

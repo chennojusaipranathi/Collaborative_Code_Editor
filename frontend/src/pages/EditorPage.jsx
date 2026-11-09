@@ -132,7 +132,7 @@ function Workspace({ roomId }) {
         running={running}
         onRun={handleRun}
         isTeacher={user.role === "teacher"}
-        saveState={ws.saveState}
+                saveState={live.status === "connected" ? "saved" : live.status === "error" ? "error" : "offline"}
         settings={settings}
         onSettingsChange={changeSettings}
         onFormat={handleFormat}
@@ -152,6 +152,15 @@ function Workspace({ roomId }) {
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
+                    {live.status !== "connected" && (
+            <p className="shrink-0 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-400">
+              {live.status === "error"
+                ? "Connection error. Editing is paused. Try refreshing the page."
+                : live.status === "reconnecting"
+                  ? "Connection lost. Reconnecting... Editing is paused so nothing is lost."
+                  : "Connecting..."}
+            </p>
+          )}
           <EditorTabs
             openFiles={ws.openFiles}
             activeId={ws.activeFile?.id}
@@ -161,7 +170,7 @@ function Workspace({ roomId }) {
           <CodeArea
             file={ws.activeFile}
             onChange={ws.updateContent}
-            readOnly={!ws.canEdit}
+            readOnly={!ws.canEdit || live.status !== "connected"}
             editorTheme={settings.theme}
             fontSize={settings.fontSize}
             onMount={(ed) => { editorRef.current = ed; setEditor(ed); }}

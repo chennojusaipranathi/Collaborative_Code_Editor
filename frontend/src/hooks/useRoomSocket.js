@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createSocket } from "../services/socket";
 
-// Connects to the room, tracks who is online and the connection status
+// status: connecting | connected | reconnecting | error
 export default function useRoomSocket(roomId) {
   const socketRef = useRef(null);
-  const [online, setOnline] = useState([]); // [{ id, name }]
-  const [status, setStatus] = useState("connecting"); // connecting | connected | disconnected | error
+  const [online, setOnline] = useState([]);
+  const [status, setStatus] = useState("connecting");
 
   useEffect(() => {
     const socket = createSocket();
@@ -22,14 +22,19 @@ export default function useRoomSocket(roomId) {
       });
     };
 
-    // "connect" fires on the first connection AND after every reconnect,
-    // so we re-join the room each time (the server forgot us when we dropped)
+    // Fires on the first connection AND after every reconnect
     socket.on("connect", join);
-    socket.on("disconnect", () => setStatus("disconnected"));
-    socket.on("connect_error", () => setStatus("error"));
+    socket.on("disconnect", (reason) => {
+      // "io server disconnect" means the server closed us: Socket.io will NOT retry by itself
+      if (reason === "io server disconnect") socket.connect();
+      setStatus("reconnecting");
+    });
+    socket.on("connect_error", () => {
+      // socket.active is true while Socket.io is still going to retry
+      setStatus(socket.active ? "reconnecting" : "error");
+    });
     socket.on("presence:update", setOnline);
 
-    // Cleanup: leave the room and close the connection
     return () => {
       socket.emit("room:leave", roomId);
       socket.disconnect();
