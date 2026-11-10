@@ -1,40 +1,36 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as historyService from "../services/historyService";
 
-export default function useHistory(roomId) {
-  const [data, setData] = useState(null); // { room, fileName, current, snapshots }
+// History of ONE file. The page remounts this when the file changes.
+export default function useHistory(roomId, fileId) {
+  const [data, setData] = useState(null); // { file, current, snapshots }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const load = useCallback(() => historyService.getHistory(roomId, fileId), [roomId, fileId]);
+
   useEffect(() => {
     let active = true;
-
-    historyService
-      .getHistory(roomId)
-      .then((result) => {
-        if (active) setData(result);
-      })
-      .catch((err) => {
-        if (active) setError(err.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
+    load()
+      .then((result) => active && setData(result))
+      .catch((err) => active && setError(err.message))
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [roomId]);
+  }, [load]);
 
-  const createSnapshot = async (label, author) => {
-    const snapshot = await historyService.createSnapshot(label, author);
-    setData((d) => ({ ...d, snapshots: [snapshot, ...d.snapshots] }));
+  const refresh = async () => setData(await load());
+
+  const create = async (label) => {
+    await historyService.createSnapshot(roomId, fileId, label);
+    await refresh();
   };
 
   const restore = async (snapshotId) => {
-    const fresh = await historyService.restoreSnapshot(roomId, snapshotId);
-    setData(fresh);
+    await historyService.restoreSnapshot(roomId, fileId, snapshotId);
+    await refresh();
   };
 
-  return { data, loading, error, createSnapshot, restore };
+  return { data, loading, error, refresh, create, restore };
 }

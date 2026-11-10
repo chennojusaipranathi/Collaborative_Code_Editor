@@ -6,13 +6,14 @@ import { socketAuth } from "./socketAuth.js";
 import { addToRoom, removeFromRoom, getOnlineUsers, setFile } from "./presence.js";
 import { registerYjsHandlers } from "./yjsHandlers.js";
 import { registerChatHandlers } from "./chatHandlers.js";
-
+import { setIO } from "./io.js";
 
 
 export function initSockets(httpServer) {
   const io = new Server(httpServer, {
     cors: { origin: env.clientUrl }, // same rule as the REST API
   });
+    setIO(io);
 
   io.use(socketAuth);
 

@@ -10,7 +10,7 @@ import { createRoomSchema, joinRoomSchema, runSchema } from "../utils/validators
 import messageRoutes from "./messageRoutes.js";
 import { runCode, listRuns } from "../controllers/executionController.js";
 import { runLimiter } from "../middleware/rateLimit.js";
-
+import snapshotRoutes from "./snapshotRoutes.js";
 
 const router = Router();
 
@@ -21,6 +21,7 @@ router.post("/", validate(createRoomSchema), createRoom);
 router.post("/join", validate(joinRoomSchema), joinRoom);
 router.get("/:roomId", getRoom);
 router.get("/:roomId/participants", requireRoomRole("viewer"), listParticipants);
+router.use("/:roomId/files/:fileId/snapshots", snapshotRoutes);
 router.use("/:roomId/files", fileRoutes);
 router.use("/:roomId/messages", messageRoutes);
 router.post("/:roomId/run", requireRoomRole("editor"), runLimiter, validate(runSchema), runCode);

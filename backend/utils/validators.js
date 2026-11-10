@@ -45,3 +45,7 @@ export const updateFileSchema = z
   code: z.string().max(100000, "Code is too large to run"),
   stdin: z.string().max(10000, "Input is too large").default(""),
 });
+
+export const createSnapshotSchema = z.object({
+  label: z.string().trim().min(1, "Give the snapshot a label").max(80, "Label is too long"),
+});

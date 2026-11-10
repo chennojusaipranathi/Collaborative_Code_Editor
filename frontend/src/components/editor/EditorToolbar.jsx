@@ -86,7 +86,7 @@ export default function EditorToolbar({ room, activeFile, running, onRun, isTeac
                     <Wand2 size={14} /> Format
                 </button>
 
-                <Link to={`/room/${room.id}/history`} className={linkClass}>
+                        <Link to={`/room/${room.id}/history${activeFile ? `?file=${activeFile.id}` : ""}`} className={linkClass}>
                     <History size={14} /> History
                 </Link>
                 {isTeacher && room.mode === "classroom" && (

@@ -1,121 +1,33 @@
-// MOCK history service. Phase 8 replaces this with real snapshots from MongoDB.
-import { getRooms } from "./roomService";
+import { request } from "./api";
+import { loadSession } from "./authService";
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString();
-const lines = (...l) => l.join("\n");
+const token = () => loadSession()?.token;
+const base = (roomId, fileId) => `/api/rooms/${roomId}/files/${fileId}/snapshots`;
 
-// The "current" code of the file (changes when you restore a snapshot)
-let current = lines(
-  "function greet(name) {",
-  "  return `Hello, ${name}!`;",
-  "}",
-  "",
-  "function add(a, b) {",
-  "  return a + b;",
-  "}",
-  "",
-  'console.log(greet("World"));',
-  "console.log(add(2, 3));"
-);
-
-let snapshots = [
-  {
-    id: "s3",
-    label: "Auto-save",
-    author: "Priya",
-    type: "auto",
-    createdAt: minutesAgo(12),
-    content: lines(
-      "function greet(name) {",
-      "  return `Hello, ${name}!`;",
-      "}",
-      "",
-      "function add(a, b) {",
-      "  return a + b",
-      "}",
-      "",
-      'console.log(greet("World"));'
-    ),
-  },
-  {
-    id: "s2",
-    label: "Improved greeting",
-    author: "Rahul",
-    type: "manual",
-    createdAt: minutesAgo(95),
-    content: lines(
-      "function greet(name) {",
-      "  return `Hello, ${name}!`;",
-      "}",
-      "",
-      'console.log(greet("World"));'
-    ),
-  },
-  {
-    id: "s1",
-    label: "Initial version",
-    author: "You",
-    type: "auto",
-    createdAt: minutesAgo(300),
-    content: lines(
-      "function greet(name) {",
-      '  return "Hello " + name;',
-      "}",
-      "",
-      'console.log(greet("World"));'
-    ),
-  },
-];
-
-async function findRoom(roomId) {
-  const rooms = await getRooms();
-  const room = rooms.find((r) => r.id === roomId);
-  if (!room) throw new Error("Room not found");
-  return room;
+// The room (name and my role) and its files, loaded together
+export async function getRoomInfo(roomId) {
+  const [roomData, fileData] = await Promise.all([
+    request(`/api/rooms/${roomId}`, { token: token() }),
+    request(`/api/rooms/${roomId}/files`, { token: token() }),
+  ]);
+  return { room: roomData.room, files: fileData.files };
 }
 
-function buildResponse(room) {
-  return { room, fileName: "main.js", current, snapshots: [...snapshots] };
+// Returns { file, current, snapshots }
+export function getHistory(roomId, fileId) {
+  return request(base(roomId, fileId), { token: token() });
 }
 
-export async function getHistory(roomId) {
-  await delay(500);
-  const room = await findRoom(roomId);
-  return buildResponse(room);
+export async function getSnapshot(roomId, fileId, snapshotId) {
+  const data = await request(`${base(roomId, fileId)}/${snapshotId}`, { token: token() });
+  return data.snapshot;
 }
 
-export async function createSnapshot(label, author) {
-  await delay(300);
-  const snapshot = {
-    id: crypto.randomUUID(),
-    label,
-    author,
-    type: "manual",
-    createdAt: new Date().toISOString(),
-    content: current,
-  };
-  snapshots = [snapshot, ...snapshots];
-  return snapshot;
+export async function createSnapshot(roomId, fileId, label) {
+  const data = await request(base(roomId, fileId), { method: "POST", body: { label }, token: token() });
+  return data.snapshot;
 }
 
-export async function restoreSnapshot(roomId, snapshotId) {
-  await delay(400);
-  const target = snapshots.find((s) => s.id === snapshotId);
-  if (!target) throw new Error("Snapshot not found");
-
-  // Safety net: save the current code as a backup BEFORE overwriting it
-  const backup = {
-    id: crypto.randomUUID(),
-    label: `Backup before restoring "${target.label}"`,
-    author: "System",
-    type: "auto",
-    createdAt: new Date().toISOString(),
-    content: current,
-  };
-  snapshots = [backup, ...snapshots];
-  current = target.content;
-
-  const room = await findRoom(roomId);
-  return buildResponse(room);
+export function restoreSnapshot(roomId, fileId, snapshotId) {
+  return request(`${base(roomId, fileId)}/${snapshotId}/restore`, { method: "POST", token: token() });
 }
