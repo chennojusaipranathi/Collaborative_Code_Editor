@@ -15,7 +15,7 @@ import useRoomSocket from "../hooks/useRoomSocket";
 import { useRef, useState, useEffect } from "react";
 import useCollab from "../hooks/useCollab";
 import useChat from "../hooks/useChat";
-import { runCode } from "../services/executionService";
+import { runCode, listRuns } from "../services/executionService";
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -45,6 +45,8 @@ function Workspace({ roomId }) {
   const handleFormat = () => {
     editorRef.current?.getAction("editor.action.formatDocument")?.run();
   };
+
+    const [history, setHistory] = useState([]);
 
   // Monaco gives markers with severity numbers: 8 = error, 4 = warning
   const handleProblems = (markers) => {
@@ -115,6 +117,14 @@ function Workspace({ roomId }) {
     error: "Execution error",
   };
 
+    const loadHistory = async () => {
+    try {
+      setHistory(await listRuns(roomId));
+    } catch {
+      // history is optional; the Run output still works without it
+    }
+  };
+
   const handleRun = async () => {
     if (!ws.activeFile) return;
     setRunning(true);
@@ -128,6 +138,7 @@ function Workspace({ roomId }) {
       if (run.stdout) add({ kind: "out", text: run.stdout });
       if (run.stderr) add({ kind: "err", text: run.stderr });
       add({ kind: "info", text: `${STATUS_LABEL[run.status]} · ${run.timeMs} ms · ${run.memoryKb} KB` });
+            loadHistory();
     } catch (err) {
       add({ kind: "err", text: err.message });
     } finally {
@@ -206,6 +217,8 @@ function Workspace({ roomId }) {
             onStdinChange={setStdin}
             onClearOutput={() => setOutput([])}
             problems={problems}
+                        history={history}
+            onOpenHistory={loadHistory}
           />
         </main>
 

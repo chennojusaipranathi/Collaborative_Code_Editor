@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
-const TABS = ["Output", "Input", "Problems"];
+const TABS = ["Output", "Input", "Problems", "History"];
 
-export default function BottomPanel({ output, stdin, onStdinChange, onClearOutput, problems }) {
+export default function BottomPanel({ output, stdin, onStdinChange, onClearOutput, problems, history = [], onOpenHistory }) {
   const [tab, setTab] = useState("Output");
 
   return (
@@ -13,10 +13,12 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
           {TABS.map((name) => (
             <button
               key={name}
-              onClick={() => setTab(name)}
-              className={`px-3 py-2 text-xs font-medium uppercase tracking-wide ${
-                tab === name ? "text-indigo-400" : "text-muted hover:text-ink"
-              }`}
+              onClick={() => {
+                setTab(name);
+                if (name === "History") onOpenHistory?.();
+              }}
+              className={`px-3 py-2 text-xs font-medium uppercase tracking-wide ${tab === name ? "text-indigo-400" : "text-muted hover:text-ink"
+                }`}
             >
               {name}
               {name === "Problems" && problems.length > 0 && (
@@ -39,12 +41,11 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
           (output.length === 0 ? (
             <p className="text-muted">Click Run to see the output here.</p>
           ) : (
-                       output.map((line, i) => (
+            output.map((line, i) => (
               <p
                 key={i}
-                className={`whitespace-pre-wrap ${
-                  line.kind === "err" ? "text-red-400" : line.kind === "info" ? "text-muted" : "text-ink"
-                }`}
+                className={`whitespace-pre-wrap ${line.kind === "err" ? "text-red-400" : line.kind === "info" ? "text-muted" : "text-ink"
+                  }`}
               >
                 {line.text}
               </p>
@@ -60,7 +61,7 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
           />
         )}
 
-                 {tab === "Problems" &&
+        {tab === "Problems" &&
           (problems.length === 0 ? (
             <p className="text-muted">No problems detected.</p>
           ) : (
@@ -70,6 +71,27 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
               </p>
             ))
           ))}
+        {tab === "History" &&
+          (history.length === 0 ? (
+            <p className="text-muted">No runs yet in this room.</p>
+          ) : (
+            history.map((r) => (
+              <details key={r.id} className="mb-2 rounded border border-line p-2">
+                <summary className="cursor-pointer text-ink">
+                  <span className="font-medium">{r.userName}</span> ran {r.fileName} ·{" "}
+                  <span className={r.status === "success" ? "text-green-400" : "text-red-400"}>
+                    {r.status.replace("_", " ")}
+                  </span>{" "}
+                  · {r.timeMs} ms · <span className="text-muted">{new Date(r.createdAt).toLocaleTimeString()}</span>
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap text-ink">
+                  {r.compileOutput || r.stdout || r.stderr || "(no output)"}
+                </pre>
+                {r.stderr && r.stdout && <pre className="whitespace-pre-wrap text-red-400">{r.stderr}</pre>}
+              </details>
+            ))
+          ))}
+
       </div>
     </section>
   );
