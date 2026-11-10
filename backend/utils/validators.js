@@ -40,3 +40,8 @@ export const updateFileSchema = z
     message: "Nothing to update",
   });
   
+  export const runSchema = z.object({
+  fileName: z.string().trim().min(1).max(100),
+  code: z.string().max(100000, "Code is too large to run"),
+  stdin: z.string().max(10000, "Input is too large").default(""),
+});

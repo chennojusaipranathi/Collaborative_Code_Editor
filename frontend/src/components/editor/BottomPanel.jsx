@@ -39,8 +39,15 @@ export default function BottomPanel({ output, stdin, onStdinChange, onClearOutpu
           (output.length === 0 ? (
             <p className="text-muted">Click Run to see the output here.</p>
           ) : (
-            output.map((line, i) => (
-              <p key={i} className="whitespace-pre-wrap text-ink">{line}</p>
+                       output.map((line, i) => (
+              <p
+                key={i}
+                className={`whitespace-pre-wrap ${
+                  line.kind === "err" ? "text-red-400" : line.kind === "info" ? "text-muted" : "text-ink"
+                }`}
+              >
+                {line.text}
+              </p>
             ))
           ))}
 

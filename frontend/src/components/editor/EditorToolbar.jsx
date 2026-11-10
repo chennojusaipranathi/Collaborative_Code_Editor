@@ -108,7 +108,7 @@ export default function EditorToolbar({ room, activeFile, running, onRun, isTeac
 
                 <button
                     onClick={onRun}
-                    disabled={running || !activeFile}
+                    disabled={running || !activeFile || !canEdit}
                     className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-400 disabled:opacity-50"
                 >
                     {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}

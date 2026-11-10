@@ -17,4 +17,7 @@ export const env = {
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   mongoUri: process.env.MONGODB_URI,
   jwtSecret: process.env.JWT_SECRET,
+    executionProvider: process.env.EXECUTION_PROVIDER || "judge0", // "judge0" or "mock"
+  judge0Url: process.env.JUDGE0_URL || "https://ce.judge0.com",
+  judge0Token: process.env.JUDGE0_AUTH_TOKEN || "", // only for hosts that need a key
 };

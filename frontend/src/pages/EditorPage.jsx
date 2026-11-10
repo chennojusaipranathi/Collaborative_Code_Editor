@@ -10,13 +10,12 @@ import BottomPanel from "../components/editor/BottomPanel";
 import ParticipantsPanel from "../components/editor/ParticipantsPanel";
 import EmptyState from "../components/common/EmptyState";
 import Button from "../components/common/Button";
-import { languageFromFileName } from "../utils/fileLanguage";
 import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
 import useRoomSocket from "../hooks/useRoomSocket";
 import { useRef, useState, useEffect } from "react";
 import useCollab from "../hooks/useCollab";
 import useChat from "../hooks/useChat";
-
+import { runCode } from "../services/executionService";
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -108,18 +107,32 @@ function Workspace({ roomId }) {
     );
   }
 
-  // MOCK run: real execution (Judge0) is added in Phase 7
+   const STATUS_LABEL = {
+    success: "Finished",
+    compile_error: "Compilation failed",
+    runtime_error: "Runtime error",
+    timeout: "Time limit exceeded",
+    error: "Execution error",
+  };
+
   const handleRun = async () => {
+    if (!ws.activeFile) return;
     setRunning(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    const language = languageFromFileName(ws.activeFile.name);
-    setOutput((lines) => [
-      ...lines,
-      `> Running ${ws.activeFile.name} (${language})`,
-      `[mock] stdin received: ${stdin ? JSON.stringify(stdin) : "(empty)"}`,
-      "[mock] Real code execution is added in Phase 7.",
-    ]);
-    setRunning(false);
+    const { name, content } = ws.activeFile;
+    const add = (...lines) => setOutput((o) => [...o, ...lines]);
+
+    add({ kind: "info", text: `> Running ${name}` });
+    try {
+      const run = await runCode(roomId, { fileName: name, code: content, stdin });
+      if (run.compileOutput) add({ kind: "err", text: run.compileOutput });
+      if (run.stdout) add({ kind: "out", text: run.stdout });
+      if (run.stderr) add({ kind: "err", text: run.stderr });
+      add({ kind: "info", text: `${STATUS_LABEL[run.status]} · ${run.timeMs} ms · ${run.memoryKb} KB` });
+    } catch (err) {
+      add({ kind: "err", text: err.message });
+    } finally {
+      setRunning(false);
+    }
   };
 
   const onlineIds = new Set(live.online.map((u) => u.id));
