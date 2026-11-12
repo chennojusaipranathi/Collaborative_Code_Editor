@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as workspaceService from "../services/workspaceService";
 
 
@@ -111,9 +111,19 @@ export default function useWorkspace(roomId) {
   const activeFile = files.find((f) => f.id === activeId) ?? null;
   const openFiles = openIds.map((id) => files.find((f) => f.id === id)).filter(Boolean);
   const canEdit = room ? room.myRole !== "viewer" : false;
+    // Reload the room (my role) and the people list without touching files or tabs
+  const refreshMembers = useCallback(async () => {
+    try {
+      const data = await workspaceService.getMembers(roomId);
+      setRoom(data.room);
+      setParticipants(data.participants);
+    } catch {
+      // keep what we have; the next event or a refresh will try again
+    }
+  }, [roomId]);
 
   return {
     room, files, participants, openFiles, activeFile, loading, error, saveState, canEdit,
-    openFile, closeTab, createFile, renameFile, deleteFile, updateContent,
+    openFile, closeTab, createFile, renameFile, deleteFile, updateContent,refreshMembers
   };
 }

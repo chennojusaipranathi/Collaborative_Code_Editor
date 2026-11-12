@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link,useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
@@ -8,6 +8,7 @@ import useAuth from "../hooks/useAuth";
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "student" });
   const [errors, setErrors] = useState({});
@@ -37,7 +38,7 @@ export default function Register() {
     setLoading(true);
     try {
       await register(form);
-      navigate("/dashboard");
+      navigate(location.state?.from || "/dashboard", { replace: true });
     } catch (err) {
       setServerError(err.message);
     } finally {
@@ -73,7 +74,7 @@ export default function Register() {
 
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{" "}
-        <Link to="/login" className="text-indigo-400 hover:underline">Log in</Link>
+        <Link to="/login" state={location.state}  className="text-indigo-400 hover:underline">Log in</Link>
       </p>
     </AuthLayout>
   );

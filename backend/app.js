@@ -10,6 +10,7 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import http from "http";
 import { initSockets } from "./sockets/index.js";
 import { flushAll } from "./sockets/docStore.js";
+import inviteRoutes from "./routes/inviteRoutes.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(cors({ origin: env.clientUrl }));
 // Read JSON bodies, but refuse huge ones
 app.use(express.json({ limit: "1mb" }));
 
+app.use("/api/invites", inviteRoutes);
 // Health check: reports database state (not rate limited, monitors call it)
 app.get("/api/health", (_req, res) => {
   const dbConnected = mongoose.connection.readyState === 1;

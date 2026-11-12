@@ -32,3 +32,12 @@ export async function saveContent(roomId, fileId, content) {
 export async function deleteFile(roomId, fileId) {
   await request(`${base(roomId)}/files/${fileId}`, { method: "DELETE", token: token() });
 }
+
+// Just the room (with my current role) and the member list
+export async function getMembers(roomId) {
+  const [roomData, peopleData] = await Promise.all([
+    request(base(roomId), { token: token() }),
+    request(`${base(roomId)}/participants`, { token: token() }),
+  ]);
+  return { room: roomData.room, participants: peopleData.participants };
+}

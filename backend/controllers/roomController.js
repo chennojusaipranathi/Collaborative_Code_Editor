@@ -4,6 +4,8 @@ import Room from "../models/Room.js";
 import RoomParticipant from "../models/RoomParticipant.js";
 import File from "../models/File.js";
 import { STARTER_FILES } from "../utils/starterFiles.js";
+import { notifyRoomChanged } from "../sockets/io.js";
+
 
 // Random 6-character code, e.g. "K7QX2M". Letters that look alike are left out.
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -60,6 +62,7 @@ export async function joinRoom(req, res) {
 
   // Joining as a student in a classroom or exam makes you an editor; free rooms too
   await RoomParticipant.create({ room: room._id, user: req.user.id, role: "editor" });
+    notifyRoomChanged(room._id);
 
   const count = await RoomParticipant.countDocuments({ room: room._id });
   res.status(201).json({ room: publicRoom(room, "editor", count) });
@@ -109,4 +112,27 @@ export async function listParticipants(req, res) {
       .filter((m) => m.user)
       .map((m) => ({ id: m.user._id, name: m.user.name, role: m.role, online: false })),
   });
+}
+
+
+export async function changeRole(req, res) {
+  const { roomId, userId } = req.params;
+
+  if (!mongoose.isValidObjectId(userId)) {
+    return res.status(404).json({ message: "Participant not found" });
+  }
+  // The owner cannot demote themselves, or the room would have no owner
+  if (userId === req.user.id) {
+    return res.status(400).json({ message: "You cannot change your own role" });
+  }
+
+  const member = await RoomParticipant.findOneAndUpdate(
+    { room: roomId, user: userId },
+    { $set: { role: req.body.role } },
+    { new: true }
+  );
+  if (!member) return res.status(404).json({ message: "Participant not found" });
+    notifyRoomChanged(roomId);
+
+  res.json({ participant: { id: userId, role: member.role } });
 }

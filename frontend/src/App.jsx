@@ -10,6 +10,8 @@ import ExamPage from "./pages/ExamPage";
 import SubmissionsPage from "./pages/SubmissionsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import JoinPage from "./pages/JoinPage";
+
 
 export default function App() {
   return (
@@ -63,6 +65,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ClassroomPage />
+          </ProtectedRoute>
+        }
+      />
+            <Route
+        path="/join/:token"
+        element={
+          <ProtectedRoute>
+            <JoinPage />
           </ProtectedRoute>
         }
       />

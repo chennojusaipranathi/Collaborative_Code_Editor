@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation,} from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
@@ -8,6 +8,7 @@ import useAuth from "../hooks/useAuth";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -37,7 +38,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(form);
-      navigate("/dashboard");
+     navigate(location.state?.from || "/dashboard", { replace: true });
     } catch (err) {
       setServerError(err.message);
     } finally {
@@ -62,7 +63,7 @@ export default function Login() {
 
       <p className="mt-6 text-center text-sm text-muted">
         New to CodeSync?{" "}
-        <Link to="/register" className="text-indigo-400 hover:underline">Create an account</Link>
+        <Link to="/register" state={location.state}  className="text-indigo-400 hover:underline">Create an account</Link>
       </p>
     </AuthLayout>
   );

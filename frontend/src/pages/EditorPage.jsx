@@ -16,6 +16,8 @@ import { useRef, useState, useEffect } from "react";
 import useCollab from "../hooks/useCollab";
 import useChat from "../hooks/useChat";
 import { runCode, listRuns } from "../services/executionService";
+import ShareModal from "../components/editor/ShareModal";
+
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -35,7 +37,7 @@ function Workspace({ roomId }) {
   const [settings, setSettings] = useState(loadEditorSettings);
   const editorRef = useRef(null); // holds the Monaco editor instance
   const [editor, setEditor] = useState(null); // triggers the collab hook when Monaco is ready
-
+  const [showShare, setShowShare] = useState(false);
 
   const changeSettings = (next) => {
     setSettings(next);
@@ -90,7 +92,18 @@ function Workspace({ roomId }) {
     });
   }, [live.status, live.socketRef, roomId, ws.activeFile?.id]);
 
+    // The server says members or roles changed: reload them
+  useEffect(() => {
+    const socket = live.socketRef.current;
+    if (!socket || live.status !== "connected") return;
 
+    const onChanged = (msg) => {
+      if (msg.roomId === roomId) ws.refreshMembers();
+    };
+    socket.on("room:changed", onChanged);
+    return () => socket.off("room:changed", onChanged);
+  }, [live.status, live.socketRef, roomId, ws.refreshMembers]);
+  
   if (ws.loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-app text-muted">
@@ -172,6 +185,7 @@ function Workspace({ roomId }) {
         onSettingsChange={changeSettings}
         onFormat={handleFormat}
         canEdit={ws.canEdit}
+        onShare={() => setShowShare(true)}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -231,6 +245,7 @@ function Workspace({ roomId }) {
         />
 
       </div>
+            {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
     </div>
   );
 }

@@ -49,3 +49,12 @@ export const updateFileSchema = z
 export const createSnapshotSchema = z.object({
   label: z.string().trim().min(1, "Give the snapshot a label").max(80, "Label is too long"),
 });
+
+export const createInviteSchema = z.object({
+  role: z.enum(["editor", "viewer"], { message: "Role must be editor or viewer" }),
+  expiresInHours: z.number().int().min(1).max(168).default(24),
+});
+
+export const changeRoleSchema = z.object({
+  role: z.enum(["editor", "viewer"], { message: "Role must be editor or viewer" }),
+});
