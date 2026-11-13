@@ -2,6 +2,9 @@ import Execution from "../models/Execution.js";
 import User from "../models/User.js";
 import { executeCode } from "../services/execution/index.js";
 import { languageFor } from "../services/execution/languages.js";
+import { getRoomRules } from "../utils/fileAccess.js";
+import { hasActiveSession } from "./examController.js";
+
 
 function publicRun(e) {
   return {
@@ -22,6 +25,13 @@ function publicRun(e) {
 
 export async function runCode(req, res) {
   const { fileName, code, stdin } = req.body;
+    // In an exam, students may run code only while their own exam is running
+  const rules = await getRoomRules(req.params.roomId);
+  if (rules?.mode === "exam" && req.membership.role !== "owner") {
+    if (!(await hasActiveSession(req.params.roomId, req.user.id))) {
+      return res.status(403).json({ message: "You can run code only while your exam is running" });
+    }
+  }
 
   const language = languageFor(fileName);
   if (!language) {
@@ -49,6 +59,10 @@ export async function runCode(req, res) {
 }
 
 export async function listRuns(req, res) {
-  const runs = await Execution.find({ room: req.params.roomId }).sort({ createdAt: -1 }).limit(20);
+  const rules = await getRoomRules(req.params.roomId);
+  const filter = { room: req.params.roomId };
+  // In an exam, students see only their own runs
+  if (rules?.mode === "exam" && req.membership.role !== "owner") filter.user = req.user.id;
+  const runs = await Execution.find(filter).sort({ createdAt: -1 }).limit(20);
   res.json({ runs: runs.map(publicRun) });
 }

@@ -9,16 +9,21 @@ import messageRoutes from "./messageRoutes.js";
 import snapshotRoutes from "./snapshotRoutes.js";
 import { protect } from "../middleware/auth.js";
 import { requireRoomRole } from "../middleware/roomAccess.js";
-import { runLimiter } from "../middleware/rateLimit.js";
+import { runLimiter,examLimiter } from "../middleware/rateLimit.js";
 import { validate} from "../middleware/validate.js";
 import {
-  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema,taskSchema
+  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema,taskSchema,examSchema, openSchema, saveSessionSchema, eventSchema, submitSessionSchema, gradeSchema
 } from "../utils/validators.js";
 
 import { setLocked } from "../controllers/roomController.js";
 
 import { getClassroom } from "../controllers/classroomController.js";
 import { getTask, saveTask, deleteTask, submitTask, listSubmissions } from "../controllers/taskController.js";
+import {
+  getExam, saveExam, setExamOpen, deleteExam, startExam, saveSession, recordEvent,
+  submitSession, listSessions, getSession, gradeSession,
+} from "../controllers/examController.js";
+
 
 const router = Router();
 
@@ -50,6 +55,18 @@ router.put("/:roomId/task", requireRoomRole("owner"), validate(taskSchema), save
 router.delete("/:roomId/task", requireRoomRole("owner"), deleteTask);
 router.post("/:roomId/task/submit", requireRoomRole("editor"), submitTask);
 router.get("/:roomId/submissions", requireRoomRole("owner"), listSubmissions);
+
+router.get("/:roomId/exam", requireRoomRole("viewer"), getExam);
+router.put("/:roomId/exam", requireRoomRole("owner"), validate(examSchema), saveExam);
+router.patch("/:roomId/exam/open", requireRoomRole("owner"), validate(openSchema), setExamOpen);
+router.delete("/:roomId/exam", requireRoomRole("owner"), deleteExam);
+router.get("/:roomId/exam/sessions", requireRoomRole("owner"), listSessions);
+router.get("/:roomId/exam/sessions/:studentId", requireRoomRole("owner"), getSession);
+router.patch("/:roomId/exam/sessions/:studentId/grade", requireRoomRole("owner"), validate(gradeSchema), gradeSession);
+router.post("/:roomId/exam/start", requireRoomRole("editor"), examLimiter, startExam);
+router.put("/:roomId/exam/session", requireRoomRole("editor"), examLimiter, validate(saveSessionSchema), saveSession);
+router.post("/:roomId/exam/session/event", requireRoomRole("editor"), examLimiter, validate(eventSchema), recordEvent);
+router.post("/:roomId/exam/session/submit", requireRoomRole("editor"), examLimiter, validate(submitSessionSchema), submitSession);
 
 
 export default router;

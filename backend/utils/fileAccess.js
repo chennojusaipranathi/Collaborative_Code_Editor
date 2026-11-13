@@ -31,16 +31,20 @@ export async function getFileOwner(roomId, fileId) {
   return owner;
 }
 
-// ---- the rules ----
 // In a classroom, students can read their own file and shared files.
+// In an exam, students never read room files (they work only in their exam session).
 export function canReadFile(room, role, userId, file) {
-  if (room?.mode !== "classroom" || role === "owner") return true;
+  if (role === "owner") return true;
+  if (room?.mode === "exam") return false;
+  if (room?.mode !== "classroom") return true;
   return !file.owner || String(file.owner) === String(userId);
 }
 
 // Viewers never write. In a classroom, students write only their own file, and only while unlocked.
 export function canWriteFile(room, role, userId, file) {
   if (role === "viewer") return false;
-  if (room?.mode !== "classroom" || role === "owner") return true;
+  if (role === "owner") return true;
+  if (room?.mode === "exam") return false;
+  if (room?.mode !== "classroom") return true;
   return !room.locked && Boolean(file.owner) && String(file.owner) === String(userId);
 }

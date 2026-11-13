@@ -1,4 +1,5 @@
 import Message from "../models/Message.js";
+import { getRoomRules } from "../utils/fileAccess.js";
 
 export function publicMessage(m) {
   return {
@@ -11,6 +12,8 @@ export function publicMessage(m) {
 }
 
 export async function listMessages(req, res) {
+    const rules = await getRoomRules(req.params.roomId);
+  if (rules?.mode === "exam" && req.membership.role !== "owner") return res.json({ messages: [] });
   const messages = await Message.find({ room: req.params.roomId })
     .sort({ createdAt: -1 })
     .limit(50);

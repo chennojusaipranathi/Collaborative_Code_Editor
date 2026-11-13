@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { FolderX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import useAuth from "../hooks/useAuth";
@@ -153,6 +153,12 @@ function Workspace({ roomId }) {
       </div>
     );
   }
+
+    // Exam students work on the exam page, never in the shared editor
+  if (ws.room.mode === "exam" && ws.room.myRole !== "owner") {
+    return <Navigate to={`/room/${roomId}/exam`} replace />;
+  }
+  
 
   const loadHistory = async () => {
     try {

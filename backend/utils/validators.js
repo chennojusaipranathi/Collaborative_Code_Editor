@@ -70,3 +70,26 @@ export const taskSchema = z.object({
     .nullable()
     .default(null),
 });
+
+export const examSchema = z.object({
+  title: z.string().trim().min(2, "Title must be at least 2 characters").max(100, "Title is too long"),
+  durationMinutes: z
+    .number()
+    .int("Duration must be a whole number of minutes")
+    .min(1, "Duration must be at least 1 minute")
+    .max(300, "Duration can be at most 300 minutes"),
+  problem: z.string().trim().min(5, "Describe the problem").max(5000, "Problem is too long"),
+});
+
+export const openSchema = z.object({ open: z.boolean({ message: "open must be true or false" }) });
+
+export const saveSessionSchema = z.object({ code: z.string().max(100000, "Code is too large") });
+
+export const eventSchema = z.object({ type: z.enum(["tab", "paste"], { message: "Unknown event" }) });
+
+export const submitSessionSchema = z.object({ code: z.string().max(100000, "Code is too large").optional() });
+
+export const gradeSchema = z.object({
+  grade: z.number({ message: "Grade must be a number" }).min(0, "Grade must be 0 to 100").max(100, "Grade must be 0 to 100"),
+  feedback: z.string().trim().max(1000, "Feedback is too long").default(""),
+});

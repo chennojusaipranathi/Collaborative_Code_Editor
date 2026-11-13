@@ -1,5 +1,8 @@
 import Message from "../models/Message.js";
 import { publicMessage } from "../controllers/messageController.js";
+import RoomParticipant from "../models/RoomParticipant.js";
+import { getRoomRules } from "../utils/fileAccess.js";
+
 
 const MAX_LENGTH = 1000;
 const MIN_GAP_MS = 400; // at most about 2 messages per second per connection
@@ -12,6 +15,14 @@ export function registerChatHandlers(io, socket, joined) {
     try {
       // Membership: the socket must have joined (the DB check happened in room:join)
       if (!joined.has(roomId)) throw new Error("Join the room first");
+
+      // Chat is off for students during an exam
+      const rules = await getRoomRules(roomId);
+      if (rules?.mode === "exam") {
+        const member = await RoomParticipant.findOne({ room: roomId, user: user.id }).select("role");
+        if (member?.role !== "owner") throw new Error("Chat is disabled during exams");
+      }
+
 
       if (typeof text !== "string") throw new Error("Invalid message");
       const clean = text.trim();
@@ -37,7 +48,7 @@ export function registerChatHandlers(io, socket, joined) {
     }
   });
 
-    // Relay only. Nothing is stored. Name comes from the verified token, not the client.
+  // Relay only. Nothing is stored. Name comes from the verified token, not the client.
   socket.on("chat:typing", ({ roomId }) => {
     if (!joined.has(roomId)) return;
     socket.to(roomId).emit("chat:typing", { roomId, userId: user.id, name: user.name });

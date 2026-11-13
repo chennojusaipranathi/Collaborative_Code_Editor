@@ -23,6 +23,8 @@ export async function listFiles(req, res) {
   const { roomId } = req.params;
   const role = req.membership.role;
   const room = await Room.findById(roomId).select("mode language").lean();
+    // Exam students have no shared files
+  if (room?.mode === "exam" && role !== "owner") return res.json({ files: [] });
   const classroomStudent = room?.mode === "classroom" && role !== "owner";
 
   // Every student editor gets a personal file the first time they open the room
@@ -40,8 +42,8 @@ export async function listFiles(req, res) {
 export async function createFile(req, res) {
   const room = await getRoomRules(req.params.roomId);
   // In a classroom only the teacher manages files
-  if (room?.mode === "classroom" && req.membership.role !== "owner") {
-    return res.status(403).json({ message: "Only the teacher can create files in a classroom" });
+    if ((room?.mode === "classroom" || room?.mode === "exam") && req.membership.role !== "owner") {
+    return res.status(403).json({ message: "Only the teacher can create files here" });
   }
 
   try {

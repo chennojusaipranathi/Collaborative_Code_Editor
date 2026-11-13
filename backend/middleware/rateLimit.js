@@ -27,3 +27,13 @@ export const runLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "You are running code too fast. Wait a moment." },
 });
+
+// Exam saves, events and submits: 120 per minute per logged-in user
+export const examLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  keyGenerator: (req) => req.user.id, // runs after `protect`
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Slow down." },
+});
