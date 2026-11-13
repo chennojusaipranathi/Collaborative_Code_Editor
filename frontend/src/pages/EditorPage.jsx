@@ -18,6 +18,9 @@ import useChat from "../hooks/useChat";
 import { runCode, listRuns } from "../services/executionService";
 import ShareModal from "../components/editor/ShareModal";
 import useHand from "../hooks/useHand";
+import useTask from "../hooks/useTask";
+import TaskBar from "../components/classroom/TaskBar";
+
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -41,6 +44,13 @@ function Workspace({ roomId }) {
     roomId,
     userId: user.id,
     enabled: ws.classroomStudent && ws.room?.myRole === "editor",
+  });
+
+    const taskState = useTask({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    enabled: ws.classroomStudent,
   });
 
 
@@ -218,6 +228,14 @@ function Workspace({ roomId }) {
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
+                    {ws.classroomStudent && (
+            <TaskBar
+              task={taskState.task}
+              submission={taskState.submission}
+              canSubmit={ws.room.myRole === "editor"}
+              onSubmit={taskState.submit}
+            />
+          )}
           {ws.classroomStudent && ws.room.locked && (
             <p className="shrink-0 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-400">
               The teacher has locked editing. You can read your code but not change it.
@@ -257,6 +275,8 @@ function Workspace({ roomId }) {
             onOpenHistory={loadHistory}
           />
         </main>
+
+
 
         <ParticipantsPanel
           participants={people}

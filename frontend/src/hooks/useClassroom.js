@@ -50,6 +50,8 @@ export default function useClassroom(roomId, socketRef, status) {
     const locked = await classroomService.setLocked(roomId, !data.room.locked);
     setData((d) => ({ ...d, room: { ...d.room, locked } }));
   };
+    // Updates the task on screen at once (the 3-second refresh would also catch it)
+  const setTask = (task) => setData((d) => d && { ...d, task });
 
   const dismissHand = useCallback(
     (studentId) => socketRef.current?.emit("hand:dismiss", { roomId, userId: studentId }),
@@ -57,5 +59,5 @@ export default function useClassroom(roomId, socketRef, status) {
   );
 
   // A failed refresh after the first success should not replace the whole page with an error
-  return { data, loading, error: data ? "" : error, toggleLock, dismissHand };
+  return { data, loading, error: data ? "" : error, toggleLock, dismissHand ,setTask};
 }

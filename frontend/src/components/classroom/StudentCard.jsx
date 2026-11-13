@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Hand, ExternalLink } from "lucide-react";
+import { ExternalLink, FileText, Hand } from "lucide-react";
 import { STUDENT_STATUS } from "../../utils/studentStatus";
 import { timeAgo } from "../../utils/timeAgo";
 
-export default function StudentCard({ student, roomId, onDismissHand }) {
+export default function StudentCard({ student, roomId, onDismissHand, onViewSubmission }) {
   const status = STUDENT_STATUS[student.status];
 
   return (
@@ -25,7 +25,7 @@ export default function StudentCard({ student, roomId, onDismissHand }) {
         </span>
       </div>
 
-      {/* Code preview: a small read-only look at what the student has typed */}
+      {/* A small read-only look at what the student has typed */}
       <pre className="mb-3 h-24 overflow-hidden rounded-lg border border-line bg-app p-2 font-mono text-xs text-ink">
         {student.code || "(no code yet)"}
       </pre>
@@ -39,9 +39,21 @@ export default function StudentCard({ student, roomId, onDismissHand }) {
         </div>
       )}
 
+      {student.status === "submitted" && (
+        <button
+          onClick={() => onViewSubmission(student)}
+          className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-indigo-400 px-3 py-1.5 text-xs font-medium text-indigo-400 hover:bg-indigo-500/10"
+        >
+          <FileText size={14} /> View submission
+        </button>
+      )}
+
       <div className="flex items-center justify-between text-xs text-muted">
         <span>{student.lastActive ? `Edited ${timeAgo(student.lastActive)}` : "No activity yet"}</span>
-        <Link to={student.fileId ? `/room/${roomId}?file=${student.fileId}` : `/room/${roomId}`} className="flex items-center gap-1 text-indigo-400 hover:underline">
+        <Link
+          to={student.fileId ? `/room/${roomId}?file=${student.fileId}` : `/room/${roomId}`}
+          className="flex items-center gap-1 text-indigo-400 hover:underline"
+        >
           Open editor <ExternalLink size={12} />
         </Link>
       </div>

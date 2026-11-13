@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, LockOpen, ShieldAlert, FolderX, Users } from "lucide-react";
+import {
+  ArrowLeft, ClipboardList, FolderX, Lock, LockOpen, Pencil, ShieldAlert, Trash2, Users,
+} from "lucide-react";
 import AppShell from "../components/layout/AppShell";
 import Button from "../components/common/Button";
 import EmptyState from "../components/common/EmptyState";
 import StudentCard from "../components/classroom/StudentCard";
+import TaskModal from "../components/classroom/TaskModal";
+import SubmissionModal from "../components/classroom/SubmissionModal";
 import useAuth from "../hooks/useAuth";
 import useClassroom from "../hooks/useClassroom";
 import useRoomSocket from "../hooks/useRoomSocket";
-
+import { deleteTask } from "../services/taskService";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -25,8 +29,7 @@ function matches(student, key) {
   return student.status === key;
 }
 
-// The role check lives here so non-teachers never trigger the data request.
-// NOTE: this is only for a good user experience. In Phase 9 the backend enforces it.
+// The role check lives here for a good experience. The server enforces it on every request.
 export default function ClassroomPage() {
   const { roomId } = useParams();
   const { user } = useAuth();
@@ -45,10 +48,16 @@ export default function ClassroomPage() {
 }
 
 function ClassroomView({ roomId }) {
-    const live = useRoomSocket(roomId);
-  const { data, loading, error, toggleLock, dismissHand } = useClassroom(roomId, live.socketRef, live.status);
+  const live = useRoomSocket(roomId);
+  const { data, loading, error, toggleLock, dismissHand, setTask } = useClassroom(
+    roomId,
+    live.socketRef,
+    live.status
+  );
   const [filter, setFilter] = useState("all");
   const [toggling, setToggling] = useState(false);
+  const [showTask, setShowTask] = useState(false);
+  const [viewing, setViewing] = useState(null); // the student whose submission is open
 
   if (loading) {
     return (
@@ -63,14 +72,14 @@ function ClassroomView({ roomId }) {
   if (error) {
     return (
       <AppShell>
-        <EmptyState icon={FolderX} title={error} text="Open a Classroom-mode room to use monitoring.">
+        <EmptyState icon={FolderX} title={error} text="Open a Classroom-mode room that you own.">
           <Button to="/dashboard">Back to dashboard</Button>
         </EmptyState>
       </AppShell>
     );
   }
 
-    const { room, task, students } = data;
+  const { room, task, students } = data;
   const locked = room.locked;
   const online = students.filter((s) => s.status !== "offline").length;
   const hands = students.filter((s) => s.handRaised).length;
@@ -83,6 +92,16 @@ function ClassroomView({ roomId }) {
       await toggleLock();
     } finally {
       setToggling(false);
+    }
+  };
+
+  const removeTask = async () => {
+    if (!window.confirm("Remove this task? Its submissions will be deleted too.")) return;
+    try {
+      await deleteTask(roomId);
+      setTask(null);
+    } catch (err) {
+      window.alert(err.message);
     }
   };
 
@@ -108,13 +127,38 @@ function ClassroomView({ roomId }) {
         </p>
       )}
 
-      {task && (
       <div className="mb-6 rounded-xl border border-line bg-surface p-4">
-        <p className="text-xs uppercase tracking-wide text-muted">Assigned task · due {task.deadline}</p>
-        <h2 className="font-semibold text-ink">{task.title}</h2>
-        <p className="text-sm text-muted">{task.description}</p>
+        {task ? (
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wide text-muted">
+                Assigned task ·{" "}
+                {task.deadline ? `due ${new Date(task.deadline).toLocaleString()}` : "no deadline"}
+                {task.closed && <span className="ml-2 text-red-400">closed</span>}
+              </p>
+              <h2 className="font-semibold text-ink">{task.title}</h2>
+              {task.description && (
+                <p className="whitespace-pre-wrap text-sm text-muted">{task.description}</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowTask(true)}>
+                <Pencil size={14} /> Edit
+              </Button>
+              <Button variant="secondary" onClick={removeTask}>
+                <Trash2 size={14} /> Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted">No task assigned yet. Students will see it as soon as you assign one.</p>
+            <Button onClick={() => setShowTask(true)}>
+              <ClipboardList size={16} /> Assign task
+            </Button>
+          </div>
+        )}
       </div>
-      )}
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         {[
@@ -146,13 +190,26 @@ function ClassroomView({ roomId }) {
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState icon={Users} title="No students in this view" text="Try a different filter." />
+        <EmptyState icon={Users} title="No students in this view" text="Students appear here after they join with the room code." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((s) => (
-            <StudentCard key={s.id} student={s} roomId={roomId} onDismissHand={dismissHand} />
+            <StudentCard
+              key={s.id}
+              student={s}
+              roomId={roomId}
+              onDismissHand={dismissHand}
+              onViewSubmission={setViewing}
+            />
           ))}
         </div>
+      )}
+
+      {showTask && (
+        <TaskModal roomId={roomId} task={task} onClose={() => setShowTask(false)} onSaved={setTask} />
+      )}
+      {viewing && (
+        <SubmissionModal roomId={roomId} student={viewing} onClose={() => setViewing(null)} />
       )}
     </AppShell>
   );
