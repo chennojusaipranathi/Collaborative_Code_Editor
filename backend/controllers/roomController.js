@@ -59,7 +59,7 @@ export async function joinRoom(req, res) {
 
   const existing = await RoomParticipant.findOne({ room: room._id, user: req.user.id });
   if (existing) return res.status(409).json({ message: "You are already in this room" });
-
+  
   // Joining as a student in a classroom or exam makes you an editor; free rooms too
   await RoomParticipant.create({ room: room._id, user: req.user.id, role: "editor" });
     notifyRoomChanged(room._id);

@@ -17,8 +17,7 @@ function publicInvite(i) {
 }
 
 const INVALID = { message: "This invite link is invalid or has expired" };
-// Higher number = more power
-const RANK = { viewer: 1, editor: 2, owner: 3 };
+
 // ---- Owner endpoints (under /api/rooms/:roomId/invites) ----
 
 export async function createInvite(req, res) {
@@ -66,10 +65,10 @@ export async function previewInvite(req, res) {
     room: { name: invite.room.name, mode: invite.room.mode },
     role: invite.role,
     myRole: existing?.role ?? null,
-    // true when the link would give an existing member MORE access
-    upgrade: Boolean(existing && RANK[invite.role] > RANK[existing.role]),
+    changes: Boolean(existing && existing.role !== "owner" && existing.role !== invite.role),
   });
 }
+
 
 export async function acceptInvite(req, res) {
   const invite = await findValid(req.params.token);
@@ -79,15 +78,16 @@ export async function acceptInvite(req, res) {
   const existing = await RoomParticipant.findOne({ room: roomId, user: req.user.id });
 
   if (existing) {
-    // Links can only ADD access. Never downgrade, and never touch an owner.
-    if (RANK[invite.role] > RANK[existing.role]) {
-      existing.role = invite.role;
-      await existing.save();
-      await Invite.updateOne({ _id: invite._id }, { $inc: { uses: 1 } });
-      notifyRoomChanged(roomId);
-      return res.json({ roomId, role: existing.role, alreadyMember: true, upgraded: true });
+    // The owner is never changed by a link
+    if (existing.role === "owner" || existing.role === invite.role) {
+      return res.json({ roomId, role: existing.role, changed: false });
     }
-    return res.json({ roomId, role: existing.role, alreadyMember: true, upgraded: false });
+    // Everyone else gets exactly the role the link gives
+    existing.role = invite.role;
+    await existing.save();
+    await Invite.updateOne({ _id: invite._id }, { $inc: { uses: 1 } });
+    notifyRoomChanged(roomId);
+    return res.json({ roomId, role: existing.role, changed: true });
   }
 
   try {
@@ -97,5 +97,6 @@ export async function acceptInvite(req, res) {
   }
   await Invite.updateOne({ _id: invite._id }, { $inc: { uses: 1 } });
   notifyRoomChanged(roomId);
-  res.status(201).json({ roomId, role: invite.role, alreadyMember: false, upgraded: false });
+
+  res.status(201).json({ roomId, role: invite.role, changed: true });
 }

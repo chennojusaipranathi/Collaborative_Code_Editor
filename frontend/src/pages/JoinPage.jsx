@@ -36,6 +36,8 @@ export default function JoinPage() {
     }
   };
 
+  const name = invite?.room.name;
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app px-4">
       <Logo />
@@ -50,39 +52,34 @@ export default function JoinPage() {
           <UserPlus className="mx-auto mb-3 text-indigo-400" size={36} />
           <h1 className="text-xl font-bold text-ink">You are invited</h1>
 
-          {invite.myRole && invite.upgrade ? (
-            <>
-              <p className="mb-6 mt-2 text-sm text-muted">
-                You are in <span className="font-medium text-ink">{invite.room.name}</span> as{" "}
-                <span className="font-medium text-ink">{invite.myRole}</span>. This link upgrades you to{" "}
-                <span className="font-medium text-ink">{invite.role}</span>.
-              </p>
-              <Button onClick={join} disabled={joining} className="w-full">
-                {joining ? "Upgrading..." : "Upgrade my access"}
-              </Button>
-            </>
-          ) : invite.myRole ? (
-            <>
-              <p className="mb-6 mt-2 text-sm text-muted">
-                You are already in <span className="font-medium text-ink">{invite.room.name}</span> as{" "}
-                <span className="font-medium text-ink">{invite.myRole}</span>. This link will not lower or
-                change your access.
-              </p>
-              <Button onClick={join} disabled={joining} className="w-full">
-                {joining ? "Opening..." : "Open room"}
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="mb-6 mt-2 text-sm text-muted">
-                Join <span className="font-medium text-ink">{invite.room.name}</span> with permission to{" "}
-                <span className="font-medium text-ink">{ROLE_TEXT[invite.role]}</span>.
-              </p>
-              <Button onClick={join} disabled={joining} className="w-full">
-                {joining ? "Joining..." : "Join room"}
-              </Button>
-            </>
-          )}
+          <p className="mb-6 mt-2 text-sm text-muted">
+            {invite.myRole === "owner" ? (
+              <>You own <b className="text-ink">{name}</b>. Links never change the owner's access.</>
+            ) : invite.changes ? (
+              <>
+                Your access to <b className="text-ink">{name}</b> will change from{" "}
+                <b className="text-ink">{invite.myRole}</b> to{" "}
+                <b className="text-ink">{invite.role}</b> ({ROLE_TEXT[invite.role]}).
+              </>
+            ) : invite.myRole ? (
+              <>You already have this access (<b className="text-ink">{invite.myRole}</b>) in <b className="text-ink">{name}</b>.</>
+            ) : (
+              <>
+                Join <b className="text-ink">{name}</b> with permission to{" "}
+                <b className="text-ink">{ROLE_TEXT[invite.role]}</b>.
+              </>
+            )}
+          </p>
+
+          <Button onClick={join} disabled={joining} className="w-full">
+            {joining
+              ? "Please wait..."
+              : invite.changes
+                ? `Change my access to ${invite.role}`
+                : invite.myRole
+                  ? "Open room"
+                  : "Join room"}
+          </Button>
         </div>
       )}
     </div>
