@@ -10,15 +10,15 @@ import snapshotRoutes from "./snapshotRoutes.js";
 import { protect } from "../middleware/auth.js";
 import { requireRoomRole } from "../middleware/roomAccess.js";
 import { runLimiter } from "../middleware/rateLimit.js";
-import { validate } from "../middleware/validate.js";
+import { validate} from "../middleware/validate.js";
 import {
-  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema
+  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema,taskSchema
 } from "../utils/validators.js";
 
 import { setLocked } from "../controllers/roomController.js";
 
 import { getClassroom } from "../controllers/classroomController.js";
-
+import { getTask, saveTask, deleteTask, submitTask, listSubmissions } from "../controllers/taskController.js";
 
 const router = Router();
 
@@ -44,6 +44,12 @@ router.use("/:roomId/files/:fileId/snapshots", snapshotRoutes); // before /files
 router.use("/:roomId/files", fileRoutes);
 router.get("/:roomId/classroom", requireRoomRole("owner"), getClassroom);
 router.patch("/:roomId/lock", requireRoomRole("owner"), validate(lockSchema), setLocked);
+
+router.get("/:roomId/task", requireRoomRole("viewer"), getTask);
+router.put("/:roomId/task", requireRoomRole("owner"), validate(taskSchema), saveTask);
+router.delete("/:roomId/task", requireRoomRole("owner"), deleteTask);
+router.post("/:roomId/task/submit", requireRoomRole("editor"), submitTask);
+router.get("/:roomId/submissions", requireRoomRole("owner"), listSubmissions);
 
 
 export default router;

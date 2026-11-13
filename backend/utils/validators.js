@@ -60,3 +60,13 @@ export const createInviteSchema = z.object({
 export const changeRoleSchema = z.object({
   role: z.enum(["editor", "viewer"], { message: "Role must be editor or viewer" }),
 });
+
+export const taskSchema = z.object({
+  title: z.string().trim().min(2, "Title must be at least 2 characters").max(100, "Title is too long"),
+  description: z.string().trim().max(2000, "Description is too long").default(""),
+  deadline: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), "Enter a valid deadline")
+    .nullable()
+    .default(null),
+});

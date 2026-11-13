@@ -12,3 +12,8 @@ export function getIO() {
 export function notifyRoomChanged(roomId) {
   io?.to(String(roomId)).emit("room:changed", { roomId: String(roomId) });
 }
+
+// Tells students' open editors that the task changed
+export function notifyTaskChanged(roomId) {
+  io?.to(String(roomId)).emit("task:changed", { roomId: String(roomId) });
+}

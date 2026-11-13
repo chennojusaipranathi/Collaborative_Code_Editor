@@ -1,10 +1,13 @@
 import File from "../models/File.js";
 import Room from "../models/Room.js";
 import RoomParticipant from "../models/RoomParticipant.js";
+import Submission from "../models/Submission.js";
+import Task from "../models/Task.js";
 import { ensureStudentFile } from "../utils/studentFiles.js";
 import { getOnlineUsers } from "../sockets/presence.js";
 import { peekContent } from "../sockets/docStore.js";
 import { getHands } from "../sockets/hands.js";
+import { publicTask } from "./taskController.js";
 
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000; // edited in the last 2 minutes = coding
 const PREVIEW_CHARS = 600;
@@ -20,10 +23,14 @@ export async function getClassroom(req, res) {
     .populate("user", "name")
     .sort({ createdAt: 1 });
 
-  // Make sure every student editor has a file, even if they have not opened the room yet
+  // Every student editor gets a file, even if they have not opened the room yet
   await Promise.all(
     members.filter((m) => m.user && m.role === "editor").map((m) => ensureStudentFile(room, m.user._id))
   );
+
+  const task = await Task.findOne({ room: roomId });
+  const submissions = task ? await Submission.find({ task: task._id }).select("student submittedAt") : [];
+  const submittedBy = new Map(submissions.map((s) => [String(s.student), s]));
 
   const files = await File.find({ room: roomId, owner: { $ne: null } }).select("name content owner updatedAt");
   const byOwner = new Map(files.map((f) => [String(f.owner), f]));
@@ -35,6 +42,7 @@ export async function getClassroom(req, res) {
     .map((m) => {
       const id = String(m.user._id);
       const file = byOwner.get(id);
+      const submission = submittedBy.get(id);
       // Live text if the file is open right now, otherwise the saved text
       const text = (file && peekContent(roomId, String(file._id))) ?? file?.content ?? "";
 
@@ -42,6 +50,7 @@ export async function getClassroom(req, res) {
       if (online.has(id)) {
         status = file && Date.now() - file.updatedAt.getTime() < ACTIVE_WINDOW_MS ? "coding" : "idle";
       }
+      if (submission) status = "submitted";
 
       return {
         id,
@@ -52,12 +61,13 @@ export async function getClassroom(req, res) {
         fileId: file ? String(file._id) : null,
         code: text.slice(0, PREVIEW_CHARS),
         lastActive: file ? file.updatedAt : null,
+        submittedAt: submission ? submission.submittedAt : null,
       };
     });
 
   res.json({
     room: { id: String(room._id), name: room.name, locked: room.locked },
-    task: null, // tasks arrive in the next step
+    task: task ? publicTask(task) : null,
     students,
   });
 }
