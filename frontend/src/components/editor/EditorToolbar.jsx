@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Copy, Check, Play, Loader2, History, Eye, ClipboardCheck, ListChecks, Wand2, Share2 } from "lucide-react";
+import { ArrowLeft, Copy, Check, Play, Loader2, History, Eye, ClipboardCheck, ListChecks, Wand2, Share2, Hand } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 import { ROOM_MODES } from "../../utils/roomModes";
 import { languageFromFileName } from "../../utils/fileLanguage";
@@ -10,7 +10,7 @@ const linkClass =
     "hidden items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:text-ink sm:flex";
 
 export default function EditorToolbar({ room, activeFile, running, onRun, isTeacher, saveState,
-    settings, onSettingsChange, onFormat, canEdit, onShare }) {
+    settings, onSettingsChange, onFormat, canEdit, onShare, showHand, handRaised, onRaiseHand }) {
     const [copied, setCopied] = useState(false);
     const mode = ROOM_MODES[room.mode];
 
@@ -93,6 +93,19 @@ export default function EditorToolbar({ room, activeFile, running, onRun, isTeac
                         <Share2 size={14} /> Share
                     </button>
                 )}
+
+                {showHand && (
+                    <button
+                        onClick={onRaiseHand}
+                        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${handRaised
+                                ? "border-amber-400 bg-amber-500/15 text-amber-400"
+                                : "border-line text-muted hover:text-ink"
+                            }`}
+                    >
+                        <Hand size={14} /> {handRaised ? "Lower hand" : "Raise hand"}
+                    </button>
+                )}
+
 
                 <Link to={`/room/${room.id}/history${activeFile ? `?file=${activeFile.id}` : ""}`} className={linkClass}>
                     <History size={14} /> History

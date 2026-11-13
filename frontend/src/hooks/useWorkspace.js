@@ -2,7 +2,7 @@ import { useCallback,useRef, useEffect, useState } from "react";
 import * as workspaceService from "../services/workspaceService";
 
 
-export default function useWorkspace(roomId) {
+export default function useWorkspace(roomId, initialFileId) {
   const [room, setRoom] = useState(null);
   const [files, setFiles] = useState([]);
   const [participants, setParticipants] = useState([]);
@@ -24,7 +24,7 @@ export default function useWorkspace(roomId) {
         setRoom(data.room);
         setFiles(data.files);
         setParticipants(data.participants);
-        const first = data.files[0];
+                const first = data.files.find((f) => f.id === initialFileId) ?? data.files[0];
         setOpenIds(first ? [first.id] : []);
         setActiveId(first ? first.id : null);
       })
@@ -38,7 +38,7 @@ export default function useWorkspace(roomId) {
     return () => {
       active = false;
     };
-  }, [roomId]);
+  }, [roomId,initialFileId ]);
 
   // Returns an error message if the name is not allowed, otherwise null
   const checkName = (name, ignoreId = null) => {
@@ -110,7 +110,10 @@ export default function useWorkspace(roomId) {
 
   const activeFile = files.find((f) => f.id === activeId) ?? null;
   const openFiles = openIds.map((id) => files.find((f) => f.id === id)).filter(Boolean);
-  const canEdit = room ? room.myRole !== "viewer" : false;
+    // In a classroom, students edit only their own file, and not while the teacher has locked editing
+  const classroomStudent = room?.mode === "classroom" && room?.myRole !== "owner";
+  const canEdit = room ? room.myRole !== "viewer" && !(classroomStudent && room.locked) : false;
+  const canManageFiles = canEdit && !classroomStudent;
     // Reload the room (my role) and the people list without touching files or tabs
   const refreshMembers = useCallback(async () => {
     try {
@@ -124,6 +127,6 @@ export default function useWorkspace(roomId) {
 
   return {
     room, files, participants, openFiles, activeFile, loading, error, saveState, canEdit,
-    openFile, closeTab, createFile, renameFile, deleteFile, updateContent,refreshMembers
+    openFile, closeTab, createFile, renameFile, deleteFile, updateContent,refreshMembers,classroomStudent, canManageFiles
   };
 }

@@ -12,8 +12,13 @@ import { requireRoomRole } from "../middleware/roomAccess.js";
 import { runLimiter } from "../middleware/rateLimit.js";
 import { validate } from "../middleware/validate.js";
 import {
-  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,
+  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema
 } from "../utils/validators.js";
+
+import { setLocked } from "../controllers/roomController.js";
+
+import { getClassroom } from "../controllers/classroomController.js";
+
 
 const router = Router();
 
@@ -37,5 +42,8 @@ router.delete("/:roomId/invites/:inviteId", requireRoomRole("owner"), revokeInvi
 router.use("/:roomId/messages", messageRoutes);
 router.use("/:roomId/files/:fileId/snapshots", snapshotRoutes); // before /files
 router.use("/:roomId/files", fileRoutes);
+router.get("/:roomId/classroom", requireRoomRole("owner"), getClassroom);
+router.patch("/:roomId/lock", requireRoomRole("owner"), validate(lockSchema), setLocked);
+
 
 export default router;

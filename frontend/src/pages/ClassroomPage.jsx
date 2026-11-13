@@ -7,6 +7,8 @@ import EmptyState from "../components/common/EmptyState";
 import StudentCard from "../components/classroom/StudentCard";
 import useAuth from "../hooks/useAuth";
 import useClassroom from "../hooks/useClassroom";
+import useRoomSocket from "../hooks/useRoomSocket";
+
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -43,7 +45,8 @@ export default function ClassroomPage() {
 }
 
 function ClassroomView({ roomId }) {
-  const { data, loading, error, toggleLock, dismissHand } = useClassroom(roomId);
+    const live = useRoomSocket(roomId);
+  const { data, loading, error, toggleLock, dismissHand } = useClassroom(roomId, live.socketRef, live.status);
   const [filter, setFilter] = useState("all");
   const [toggling, setToggling] = useState(false);
 
@@ -67,7 +70,8 @@ function ClassroomView({ roomId }) {
     );
   }
 
-  const { room, task, students, locked } = data;
+    const { room, task, students } = data;
+  const locked = room.locked;
   const online = students.filter((s) => s.status !== "offline").length;
   const hands = students.filter((s) => s.handRaised).length;
   const submitted = students.filter((s) => s.status === "submitted").length;
@@ -104,11 +108,13 @@ function ClassroomView({ roomId }) {
         </p>
       )}
 
+      {task && (
       <div className="mb-6 rounded-xl border border-line bg-surface p-4">
         <p className="text-xs uppercase tracking-wide text-muted">Assigned task · due {task.deadline}</p>
         <h2 className="font-semibold text-ink">{task.title}</h2>
         <p className="text-sm text-muted">{task.description}</p>
       </div>
+      )}
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         {[

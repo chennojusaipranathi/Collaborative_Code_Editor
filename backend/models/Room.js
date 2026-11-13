@@ -11,6 +11,7 @@ const roomSchema = new mongoose.Schema(
       default: "JavaScript",
     },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    locked: { type: Boolean, default: false }, // classroom: teacher froze student editing
   },
   { timestamps: true }
 );

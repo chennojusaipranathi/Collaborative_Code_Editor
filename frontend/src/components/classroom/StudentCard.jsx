@@ -40,8 +40,8 @@ export default function StudentCard({ student, roomId, onDismissHand }) {
       )}
 
       <div className="flex items-center justify-between text-xs text-muted">
-        <span>Active {timeAgo(student.lastActive)}</span>
-        <Link to={`/room/${roomId}`} className="flex items-center gap-1 text-indigo-400 hover:underline">
+        <span>{student.lastActive ? `Edited ${timeAgo(student.lastActive)}` : "No activity yet"}</span>
+        <Link to={student.fileId ? `/room/${roomId}?file=${student.fileId}` : `/room/${roomId}`} className="flex items-center gap-1 text-indigo-400 hover:underline">
           Open editor <ExternalLink size={12} />
         </Link>
       </div>

@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import RoomParticipant from "../models/RoomParticipant.js";
 import { getDoc, markDirty, watch, unwatch } from "./docStore.js";
+import { getRoomRules, getFileOwner, canReadFile, canWriteFile } from "../utils/fileAccess.js";
 
 // `joined` is the set of room ids this socket joined (from index.js).
 // Returns a cleanup function to call on disconnect.
@@ -8,6 +9,7 @@ export function registerYjsHandlers(socket, joined) {
   const user = socket.data.user;
   const watching = new Set(); // "roomId:fileId" pairs this socket has open
 
+  // Loaded fresh each time, so role changes apply immediately
   async function roleIn(roomId) {
     const m = await RoomParticipant.findOne({ room: roomId, user: user.id });
     return m?.role ?? null;
@@ -16,6 +18,14 @@ export function registerYjsHandlers(socket, joined) {
   socket.on("yjs:sync", async ({ roomId, fileId }, ack) => {
     try {
       if (!joined.has(roomId)) throw new Error("Join the room first");
+
+      const role = await roleIn(roomId);
+      if (!role) throw new Error("Room not found");
+      const room = await getRoomRules(roomId);
+      const owner = await getFileOwner(roomId, fileId);
+      // Same message as a missing file, so ids can't be probed
+      if (!canReadFile(room, role, user.id, { owner })) throw new Error("File not found");
+
       const doc = await getDoc(roomId, fileId);
       watch(roomId, fileId, socket.id);
       watching.add(`${roomId}:${fileId}`);
@@ -35,11 +45,16 @@ export function registerYjsHandlers(socket, joined) {
       if (!joined.has(roomId)) throw new Error("Join the room first");
 
       const role = await roleIn(roomId);
-      if (!role || role === "viewer") throw new Error("You cannot edit in this room");
+      if (!role) throw new Error("Room not found");
+      const room = await getRoomRules(roomId);
+      const owner = await getFileOwner(roomId, fileId);
+      if (!canWriteFile(room, role, user.id, { owner })) {
+        throw new Error("You cannot edit this file right now");
+      }
 
       const doc = await getDoc(roomId, fileId);
       Y.applyUpdate(doc, new Uint8Array(update), "client");
-      markDirty(roomId, fileId);
+      markDirty(roomId, fileId, user.name);
 
       socket.to(roomId).emit("yjs:update", { fileId, update });
       ack?.({ ok: true });

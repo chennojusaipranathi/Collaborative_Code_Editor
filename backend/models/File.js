@@ -6,6 +6,8 @@ const fileSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 100 },
     content: { type: String, default: "", maxlength: 200000 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        // Set for a student's personal file in a classroom. null means a shared file.
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   },
   { timestamps: true }
 );

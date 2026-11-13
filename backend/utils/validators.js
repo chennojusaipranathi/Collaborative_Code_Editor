@@ -31,6 +31,8 @@ const fileName = z
 
 export const createFileSchema = z.object({ name: fileName });
 
+export const lockSchema = z.object({ locked: z.boolean({ message: "locked must be true or false" }) });
+
 export const updateFileSchema = z
   .object({
     name: fileName.optional(),

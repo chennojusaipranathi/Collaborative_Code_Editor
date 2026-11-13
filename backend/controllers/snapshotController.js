@@ -4,6 +4,8 @@ import User from "../models/User.js";
 import VersionSnapshot from "../models/VersionSnapshot.js";
 import { currentContent, replaceContent } from "../sockets/docStore.js";
 import { getIO } from "../sockets/io.js";
+import { getRoomRules, canReadFile, canWriteFile } from "../utils/fileAccess.js";
+
 
 function publicSnapshot(s, withContent = false) {
   return {
@@ -16,12 +18,16 @@ function publicSnapshot(s, withContent = false) {
   };
 }
 
-// Finds the file, and only if it belongs to this room
+// Finds the file, and only if it belongs to this room and this member may read it
 async function findFile(req) {
   const { roomId, fileId } = req.params;
   if (!mongoose.isValidObjectId(fileId)) return null;
-  return File.findOne({ _id: fileId, room: roomId });
+  const file = await File.findOne({ _id: fileId, room: roomId });
+  if (!file) return null;
+  const room = await getRoomRules(roomId);
+  return canReadFile(room, req.membership.role, req.user.id, file) ? file : null;
 }
+
 
 async function findSnapshot(req, file) {
   if (!mongoose.isValidObjectId(req.params.snapshotId)) return null;
@@ -50,6 +56,11 @@ export async function listSnapshots(req, res) {
 export async function getSnapshot(req, res) {
   const file = await findFile(req);
   if (!file) return res.status(404).json(NOT_FOUND);
+    const rules = await getRoomRules(req.params.roomId);
+  if (!canWriteFile(rules, req.membership.role, req.user.id, file)) {
+    return res.status(403).json({ message: "You cannot change this file right now" });
+  }
+  
   const snapshot = await findSnapshot(req, file);
   if (!snapshot) return res.status(404).json({ message: "Snapshot not found" });
   res.json({ snapshot: publicSnapshot(snapshot, true) });
@@ -58,6 +69,10 @@ export async function getSnapshot(req, res) {
 export async function createSnapshot(req, res) {
   const file = await findFile(req);
   if (!file) return res.status(404).json(NOT_FOUND);
+    const rules = await getRoomRules(req.params.roomId);
+  if (!canWriteFile(rules, req.membership.role, req.user.id, file)) {
+    return res.status(403).json({ message: "You cannot change this file right now" });
+  }
 
   const user = await User.findById(req.user.id);
   // Content comes from the server's own copy, never from the client

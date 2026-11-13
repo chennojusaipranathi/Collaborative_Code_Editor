@@ -1,21 +1,48 @@
 import mongoose from "mongoose";
 import File from "../models/File.js";
 import Room from "../models/Room.js";
-import { dropDoc } from "../sockets/docStore.js";
 import VersionSnapshot from "../models/VersionSnapshot.js";
+import { dropDoc } from "../sockets/docStore.js";
+import { getRoomRules, canWriteFile } from "../utils/fileAccess.js";
+import { ensureStudentFile } from "../utils/studentFiles.js";
 
 function publicFile(file) {
-  return { id: file._id, name: file.name, content: file.content };
+  return {
+    id: file._id,
+    name: file.name,
+    content: file.content,
+    owner: file.owner ? String(file.owner) : null,
+  };
 }
 
 const DUPLICATE = { message: "A file with this name already exists" };
+const FORBIDDEN = { message: "You cannot change this file right now" };
 
 export async function listFiles(req, res) {
-  const files = await File.find({ room: req.params.roomId }).sort({ createdAt: 1 });
+  const { roomId } = req.params;
+  const role = req.membership.role;
+  const room = await Room.findById(roomId).select("mode language").lean();
+  const classroomStudent = room?.mode === "classroom" && role !== "owner";
+
+  // Every student editor gets a personal file the first time they open the room
+  if (classroomStudent && role === "editor") await ensureStudentFile(room, req.user.id);
+
+  // Students see shared files and their own, never other students' files
+  const filter = classroomStudent
+    ? { room: roomId, $or: [{ owner: null }, { owner: req.user.id }] }
+    : { room: roomId };
+
+  const files = await File.find(filter).sort({ createdAt: 1 });
   res.json({ files: files.map(publicFile) });
 }
 
 export async function createFile(req, res) {
+  const room = await getRoomRules(req.params.roomId);
+  // In a classroom only the teacher manages files
+  if (room?.mode === "classroom" && req.membership.role !== "owner") {
+    return res.status(403).json({ message: "Only the teacher can create files in a classroom" });
+  }
+
   try {
     const file = await File.create({
       room: req.params.roomId,
@@ -39,6 +66,11 @@ export async function updateFile(req, res) {
   const file = await File.findOne({ _id: fileId, room: roomId });
   if (!file) return res.status(404).json({ message: "File not found" });
 
+  const room = await getRoomRules(roomId);
+  if (!canWriteFile(room, req.membership.role, req.user.id, file)) {
+    return res.status(403).json(FORBIDDEN);
+  }
+
   if (req.body.name !== undefined) file.name = req.body.name;
   if (req.body.content !== undefined) file.content = req.body.content;
 
@@ -49,7 +81,6 @@ export async function updateFile(req, res) {
     throw err;
   }
 
-  // Keep the room's "last edited" time fresh when code changes
   if (req.body.content !== undefined) {
     await Room.updateOne({ _id: roomId }, { $set: { updatedAt: new Date() } });
   }
@@ -63,13 +94,17 @@ export async function deleteFile(req, res) {
     return res.status(404).json({ message: "File not found" });
   }
 
-  const result = await File.deleteOne({ _id: fileId, room: roomId });
-  if (result.deletedCount === 0)
-  {
-      dropDoc(roomId, fileId);
-        await VersionSnapshot.deleteMany({ file: fileId });
-     return res.status(404).json({ message: "File not found" });
+  const file = await File.findOne({ _id: fileId, room: roomId });
+  if (!file) return res.status(404).json({ message: "File not found" });
+
+  const room = await getRoomRules(roomId);
+  if (!canWriteFile(room, req.membership.role, req.user.id, file)) {
+    return res.status(403).json(FORBIDDEN);
   }
+
+  await File.deleteOne({ _id: fileId });
+  dropDoc(roomId, fileId);
+  await VersionSnapshot.deleteMany({ file: fileId });
 
   res.json({ message: "File deleted" });
 }

@@ -5,6 +5,7 @@ import RoomParticipant from "../models/RoomParticipant.js";
 import File from "../models/File.js";
 import { STARTER_FILES } from "../utils/starterFiles.js";
 import { notifyRoomChanged } from "../sockets/io.js";
+import { clearRules } from "../utils/fileAccess.js";
 
 
 // Random 6-character code, e.g. "K7QX2M". Letters that look alike are left out.
@@ -24,6 +25,7 @@ function publicRoom(room, myRole, participants) {
     participants,
     myRole,
     lastEdited: room.updatedAt,
+    locked: room.locked ?? false,
   };
 }
 
@@ -129,10 +131,24 @@ export async function changeRole(req, res) {
   const member = await RoomParticipant.findOneAndUpdate(
     { room: roomId, user: userId },
     { $set: { role: req.body.role } },
-    { new: true }
+     { returnDocument: "after" }
   );
   if (!member) return res.status(404).json({ message: "Participant not found" });
     notifyRoomChanged(roomId);
 
   res.json({ participant: { id: userId, role: member.role } });
+}
+
+export async function setLocked(req, res) {
+  const { roomId } = req.params;
+  const room = await Room.findById(roomId).select("mode");
+  if (!room || room.mode !== "classroom") {
+    return res.status(400).json({ message: "Only classroom rooms can be locked" });
+  }
+
+  // timestamps: false keeps "last edited" about code, not about locking
+  await Room.updateOne({ _id: roomId }, { $set: { locked: req.body.locked } }, { timestamps: false });
+  clearRules(roomId); // apply to live editing immediately
+  notifyRoomChanged(roomId); // open editors reload and become read-only
+  res.json({ locked: req.body.locked });
 }

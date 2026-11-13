@@ -39,7 +39,7 @@ async function save(key, roomId, fileId) {
 
   try {
     const content = entry.doc.getText("content").toString();
-       const file = await File.findOneAndUpdate({ _id: fileId, room: roomId }, { $set: { content } }, { new: true });
+       const file = await File.findOneAndUpdate({ _id: fileId, room: roomId }, { $set: { content } }, { returnDocument: "after" });
     if (file) await maybeAutoSnapshot(file, content);
     await Room.updateOne({ _id: roomId }, { $set: { updatedAt: new Date() } });
   } catch (err) {
@@ -154,4 +154,10 @@ export async function replaceContent(roomId, fileId, content) {
 
   markDirty(roomId, fileId);
   return update;
+}
+
+// The text of a document only if it is already loaded in memory (no database query)
+export function peekContent(roomId, fileId) {
+  const entry = docs.get(keyOf(roomId, fileId));
+  return entry ? entry.doc.getText("content").toString() : null;
 }

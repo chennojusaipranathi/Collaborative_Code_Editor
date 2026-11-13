@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { FolderX } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import useWorkspace from "../hooks/useWorkspace";
@@ -17,7 +17,7 @@ import useCollab from "../hooks/useCollab";
 import useChat from "../hooks/useChat";
 import { runCode, listRuns } from "../services/executionService";
 import ShareModal from "../components/editor/ShareModal";
-
+import useHand from "../hooks/useHand";
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
@@ -27,8 +27,22 @@ export default function EditorPage() {
 
 function Workspace({ roomId }) {
   const { user } = useAuth();
-  const ws = useWorkspace(roomId);
+  const [params] = useSearchParams();
+  const ws = useWorkspace(roomId, params.get("file"));
   const live = useRoomSocket(roomId);
+
+  // Can the current user type in the open file? (role, classroom ownership and lock)
+  const fileEditable =
+    ws.canEdit && (!ws.classroomStudent || ws.activeFile?.owner === user.id);
+
+  const hand = useHand({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    userId: user.id,
+    enabled: ws.classroomStudent && ws.room?.myRole === "editor",
+  });
+
 
   const [output, setOutput] = useState([]);
   const [stdin, setStdin] = useState("");
@@ -48,7 +62,7 @@ function Workspace({ roomId }) {
     editorRef.current?.getAction("editor.action.formatDocument")?.run();
   };
 
-    const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState([]);
 
   // Monaco gives markers with severity numbers: 8 = error, 4 = warning
   const handleProblems = (markers) => {
@@ -70,7 +84,7 @@ function Workspace({ roomId }) {
     roomId,
     fileId: ws.activeFile?.id,
     editor,
-    canEdit: ws.canEdit,
+    canEdit: fileEditable,
     user,
   });
 
@@ -92,7 +106,7 @@ function Workspace({ roomId }) {
     });
   }, [live.status, live.socketRef, roomId, ws.activeFile?.id]);
 
-    // The server says members or roles changed: reload them
+  // The server says members or roles changed: reload them
   useEffect(() => {
     const socket = live.socketRef.current;
     if (!socket || live.status !== "connected") return;
@@ -102,8 +116,8 @@ function Workspace({ roomId }) {
     };
     socket.on("room:changed", onChanged);
     return () => socket.off("room:changed", onChanged);
-  }, [live.status, live.socketRef, roomId, ws.refreshMembers]);
-  
+  }, [live.status, live.socketRef, roomId, ws.refreshMembers,ws]);
+
   if (ws.loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-app text-muted">
@@ -122,7 +136,7 @@ function Workspace({ roomId }) {
     );
   }
 
-   const STATUS_LABEL = {
+  const STATUS_LABEL = {
     success: "Finished",
     compile_error: "Compilation failed",
     runtime_error: "Runtime error",
@@ -130,7 +144,7 @@ function Workspace({ roomId }) {
     error: "Execution error",
   };
 
-    const loadHistory = async () => {
+  const loadHistory = async () => {
     try {
       setHistory(await listRuns(roomId));
     } catch {
@@ -151,7 +165,7 @@ function Workspace({ roomId }) {
       if (run.stdout) add({ kind: "out", text: run.stdout });
       if (run.stderr) add({ kind: "err", text: run.stderr });
       add({ kind: "info", text: `${STATUS_LABEL[run.status]} · ${run.timeMs} ms · ${run.memoryKb} KB` });
-            loadHistory();
+      loadHistory();
     } catch (err) {
       add({ kind: "err", text: err.message });
     } finally {
@@ -184,7 +198,10 @@ function Workspace({ roomId }) {
         settings={settings}
         onSettingsChange={changeSettings}
         onFormat={handleFormat}
-        canEdit={ws.canEdit}
+        canEdit={fileEditable}
+        showHand={ws.classroomStudent && ws.room.myRole === "editor"}
+        handRaised={hand.raised}
+        onRaiseHand={hand.toggle}
         onShare={() => setShowShare(true)}
       />
 
@@ -192,7 +209,7 @@ function Workspace({ roomId }) {
         <FileExplorer
           files={ws.files}
           activeId={ws.activeFile?.id}
-          canEdit={ws.canEdit}
+          canEdit={ws.canManageFiles}
           viewersByFile={viewersByFile}
           onOpen={ws.openFile}
           onCreate={ws.createFile}
@@ -201,6 +218,11 @@ function Workspace({ roomId }) {
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
+          {ws.classroomStudent && ws.room.locked && (
+            <p className="shrink-0 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-400">
+              The teacher has locked editing. You can read your code but not change it.
+            </p>
+          )}
           {live.status !== "connected" && (
             <p className="shrink-0 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-400">
               {live.status === "error"
@@ -219,7 +241,7 @@ function Workspace({ roomId }) {
           <CodeArea
             file={ws.activeFile}
             onChange={ws.updateContent}
-            readOnly={!ws.canEdit || live.status !== "connected"}
+            readOnly={!fileEditable || live.status !== "connected"}
             editorTheme={settings.theme}
             fontSize={settings.fontSize}
             onMount={(ed) => { editorRef.current = ed; setEditor(ed); }}
@@ -231,7 +253,7 @@ function Workspace({ roomId }) {
             onStdinChange={setStdin}
             onClearOutput={() => setOutput([])}
             problems={problems}
-                        history={history}
+            history={history}
             onOpenHistory={loadHistory}
           />
         </main>
@@ -245,7 +267,7 @@ function Workspace({ roomId }) {
         />
 
       </div>
-            {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
+      {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
     </div>
   );
 }

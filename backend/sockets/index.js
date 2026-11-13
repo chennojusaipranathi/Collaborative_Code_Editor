@@ -7,7 +7,7 @@ import { addToRoom, removeFromRoom, getOnlineUsers, setFile } from "./presence.j
 import { registerYjsHandlers } from "./yjsHandlers.js";
 import { registerChatHandlers } from "./chatHandlers.js";
 import { setIO } from "./io.js";
-
+import { registerClassroomHandlers } from "./classroomHandlers.js";
 
 export function initSockets(httpServer) {
   const io = new Server(httpServer, {
@@ -23,7 +23,7 @@ export function initSockets(httpServer) {
     const joined = new Set();
      const cleanupYjs = registerYjsHandlers(socket, joined);
          registerChatHandlers(io, socket, joined);
-
+            registerClassroomHandlers(io, socket, joined);
          
     const broadcastPresence = (roomId) => {
       io.to(roomId).emit("presence:update", getOnlineUsers(roomId));
