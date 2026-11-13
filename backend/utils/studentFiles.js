@@ -1,9 +1,10 @@
 import File from "../models/File.js";
 import User from "../models/User.js";
 import { STARTER_FILES } from "./starterFiles.js";
+import { notifyRoomChanged } from "../sockets/io.js";
 
 // Gives a student their own file in a classroom (created once, then reused).
-// `room` needs _id, mode and language.
+// `room` needs _id, mode and language. Tells open editors only when a NEW file is made.
 export async function ensureStudentFile(room, userId) {
   if (room.mode !== "classroom") return null;
 
@@ -18,9 +19,12 @@ export async function ensureStudentFile(room, userId) {
   // Try "name.ext", then "name_1a2b.ext" if that name is taken
   for (const name of [`${base}.${ext}`, `${base}_${String(userId).slice(-4)}.${ext}`]) {
     try {
-      return await File.create({
+      const file = await File.create({
         room: room._id, name, content: starter.content, createdBy: userId, owner: userId,
       });
+      // The file exists now, so open editors can reload and see it
+      notifyRoomChanged(room._id);
+      return file;
     } catch (err) {
       if (err.code !== 11000) throw err;
       // Two requests at once may have created it already

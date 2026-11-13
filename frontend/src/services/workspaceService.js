@@ -41,3 +41,8 @@ export async function getMembers(roomId) {
   ]);
   return { room: roomData.room, participants: peopleData.participants };
 }
+
+export async function getFiles(roomId) {
+  const data = await request(`${base(roomId)}/files`, { token: token() });
+  return data.files;
+}

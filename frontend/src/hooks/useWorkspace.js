@@ -114,16 +114,28 @@ export default function useWorkspace(roomId, initialFileId) {
   const classroomStudent = room?.mode === "classroom" && room?.myRole !== "owner";
   const canEdit = room ? room.myRole !== "viewer" && !(classroomStudent && room.locked) : false;
   const canManageFiles = canEdit && !classroomStudent;
-    // Reload the room (my role) and the people list without touching files or tabs
+ 
+   // Reload roles, people and the file list. Open tabs and typed text are left alone.
   const refreshMembers = useCallback(async () => {
     try {
-      const data = await workspaceService.getMembers(roomId);
+      const [data, fresh] = await Promise.all([
+        workspaceService.getMembers(roomId),
+        workspaceService.getFiles(roomId),
+      ]);
       setRoom(data.room);
       setParticipants(data.participants);
+      // Add new files and drop deleted ones, but keep the objects we already have,
+      // so text being typed is never overwritten by an older saved copy
+      setFiles((current) => {
+        const known = new Map(current.map((f) => [f.id, f]));
+        return fresh.map((f) => (known.has(f.id) ? { ...known.get(f.id), name: f.name } : f));
+      });
     } catch {
       // keep what we have; the next event or a refresh will try again
     }
   }, [roomId]);
+
+  
 
   return {
     room, files, participants, openFiles, activeFile, loading, error, saveState, canEdit,

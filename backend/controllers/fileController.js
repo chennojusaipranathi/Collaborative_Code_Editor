@@ -5,6 +5,7 @@ import VersionSnapshot from "../models/VersionSnapshot.js";
 import { dropDoc } from "../sockets/docStore.js";
 import { getRoomRules, canWriteFile } from "../utils/fileAccess.js";
 import { ensureStudentFile } from "../utils/studentFiles.js";
+import { notifyRoomChanged } from "../sockets/io.js";
 
 function publicFile(file) {
   return {
@@ -49,6 +50,7 @@ export async function createFile(req, res) {
       name: req.body.name,
       createdBy: req.user.id,
     });
+        notifyRoomChanged(req.params.roomId);
     res.status(201).json({ file: publicFile(file) });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json(DUPLICATE);
@@ -105,6 +107,6 @@ export async function deleteFile(req, res) {
   await File.deleteOne({ _id: fileId });
   dropDoc(roomId, fileId);
   await VersionSnapshot.deleteMany({ file: fileId });
-
+      notifyRoomChanged(req.params.roomId);
   res.json({ message: "File deleted" });
 }

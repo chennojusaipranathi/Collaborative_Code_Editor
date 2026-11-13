@@ -6,7 +6,7 @@ import File from "../models/File.js";
 import { STARTER_FILES } from "../utils/starterFiles.js";
 import { notifyRoomChanged } from "../sockets/io.js";
 import { clearRules } from "../utils/fileAccess.js";
-
+import { ensureStudentFile } from "../utils/studentFiles.js";
 
 // Random 6-character code, e.g. "K7QX2M". Letters that look alike are left out.
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -64,6 +64,11 @@ export async function joinRoom(req, res) {
   
   // Joining as a student in a classroom or exam makes you an editor; free rooms too
   await RoomParticipant.create({ room: room._id, user: req.user.id, role: "editor" });
+    await ensureStudentFile(room, req.user.id); // does nothing outside classrooms
+      if (req.body.role === "editor") {
+    const room = await Room.findById(roomId).select("mode language");
+    if (room) await ensureStudentFile(room, userId);
+  }
     notifyRoomChanged(room._id);
 
   const count = await RoomParticipant.countDocuments({ room: room._id });

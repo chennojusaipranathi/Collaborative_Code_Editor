@@ -1,32 +1,39 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import { FolderX } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import useAuth from "../hooks/useAuth";
 import useWorkspace from "../hooks/useWorkspace";
+import useRoomSocket from "../hooks/useRoomSocket";
+import useCollab from "../hooks/useCollab";
+import useChat from "../hooks/useChat";
+import useHand from "../hooks/useHand";
+import useTask from "../hooks/useTask";
 import EditorToolbar from "../components/editor/EditorToolbar";
 import FileExplorer from "../components/editor/FileExplorer";
 import EditorTabs from "../components/editor/EditorTabs";
 import CodeArea from "../components/editor/CodeArea";
 import BottomPanel from "../components/editor/BottomPanel";
 import ParticipantsPanel from "../components/editor/ParticipantsPanel";
+import ShareModal from "../components/editor/ShareModal";
+import TaskBar from "../components/classroom/TaskBar";
 import EmptyState from "../components/common/EmptyState";
 import Button from "../components/common/Button";
 import { loadEditorSettings, saveEditorSettings } from "../utils/editorSettings";
-import useRoomSocket from "../hooks/useRoomSocket";
-import { useRef, useState, useEffect } from "react";
-import useCollab from "../hooks/useCollab";
-import useChat from "../hooks/useChat";
 import { runCode, listRuns } from "../services/executionService";
-import ShareModal from "../components/editor/ShareModal";
-import useHand from "../hooks/useHand";
-import useTask from "../hooks/useTask";
-import TaskBar from "../components/classroom/TaskBar";
-
 
 // key={roomId} makes React start fresh when you move to a different room
 export default function EditorPage() {
   const { roomId } = useParams();
   return <Workspace key={roomId} roomId={roomId} />;
 }
+
+const STATUS_LABEL = {
+  success: "Finished",
+  compile_error: "Compilation failed",
+  runtime_error: "Runtime error",
+  timeout: "Time limit exceeded",
+  error: "Execution error",
+};
 
 function Workspace({ roomId }) {
   const { user } = useAuth();
@@ -46,22 +53,63 @@ function Workspace({ roomId }) {
     enabled: ws.classroomStudent && ws.room?.myRole === "editor",
   });
 
-    const taskState = useTask({
+  const taskState = useTask({
     socketRef: live.socketRef,
     status: live.status,
     roomId,
     enabled: ws.classroomStudent,
   });
 
-
   const [output, setOutput] = useState([]);
   const [stdin, setStdin] = useState("");
   const [running, setRunning] = useState(false);
   const [problems, setProblems] = useState([]);
+  const [history, setHistory] = useState([]);
   const [settings, setSettings] = useState(loadEditorSettings);
+  const [showShare, setShowShare] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const editorRef = useRef(null); // holds the Monaco editor instance
   const [editor, setEditor] = useState(null); // triggers the collab hook when Monaco is ready
-  const [showShare, setShowShare] = useState(false);
+
+  useCollab({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    fileId: ws.activeFile?.id,
+    editor,
+    canEdit: fileEditable,
+    user,
+  });
+
+  const chat = useChat({
+    socketRef: live.socketRef,
+    status: live.status,
+    roomId,
+    panelOpen: chatOpen,
+  });
+
+  const { refreshMembers } = ws;
+
+  // Tell the server which file is open, so others can see it in the file list
+  useEffect(() => {
+    if (live.status !== "connected") return;
+    live.socketRef.current?.emit("file:focus", {
+      roomId,
+      fileId: ws.activeFile?.id ?? null,
+    });
+  }, [live.status, live.socketRef, roomId, ws.activeFile?.id]);
+
+  // The server says members, roles or files changed: reload them
+  useEffect(() => {
+    const socket = live.socketRef.current;
+    if (!socket || live.status !== "connected") return;
+
+    const onChanged = (msg) => {
+      if (msg.roomId === roomId) refreshMembers();
+    };
+    socket.on("room:changed", onChanged);
+    return () => socket.off("room:changed", onChanged);
+  }, [live.status, live.socketRef, roomId, refreshMembers]);
 
   const changeSettings = (next) => {
     setSettings(next);
@@ -71,8 +119,6 @@ function Workspace({ roomId }) {
   const handleFormat = () => {
     editorRef.current?.getAction("editor.action.formatDocument")?.run();
   };
-
-  const [history, setHistory] = useState([]);
 
   // Monaco gives markers with severity numbers: 8 = error, 4 = warning
   const handleProblems = (markers) => {
@@ -88,45 +134,7 @@ function Workspace({ roomId }) {
     );
   };
 
-  useCollab({
-    socketRef: live.socketRef,
-    status: live.status,
-    roomId,
-    fileId: ws.activeFile?.id,
-    editor,
-    canEdit: fileEditable,
-    user,
-  });
-
-  const [chatOpen, setChatOpen] = useState(false);
-  const chat = useChat({
-    socketRef: live.socketRef,
-    status: live.status,
-    roomId,
-    panelOpen: chatOpen,
-  });
-
-
-  // Tell the server which file is open, so others can see it in the file list
-  useEffect(() => {
-    if (live.status !== "connected") return;
-    live.socketRef.current?.emit("file:focus", {
-      roomId,
-      fileId: ws.activeFile?.id ?? null,
-    });
-  }, [live.status, live.socketRef, roomId, ws.activeFile?.id]);
-
-  // The server says members or roles changed: reload them
-  useEffect(() => {
-    const socket = live.socketRef.current;
-    if (!socket || live.status !== "connected") return;
-
-    const onChanged = (msg) => {
-      if (msg.roomId === roomId) ws.refreshMembers();
-    };
-    socket.on("room:changed", onChanged);
-    return () => socket.off("room:changed", onChanged);
-  }, [live.status, live.socketRef, roomId, ws.refreshMembers,ws]);
+  // ---- Everything below may return early, so no hooks go below this line ----
 
   if (ws.loading) {
     return (
@@ -145,14 +153,6 @@ function Workspace({ roomId }) {
       </div>
     );
   }
-
-  const STATUS_LABEL = {
-    success: "Finished",
-    compile_error: "Compilation failed",
-    runtime_error: "Runtime error",
-    timeout: "Time limit exceeded",
-    error: "Execution error",
-  };
 
   const loadHistory = async () => {
     try {
@@ -228,7 +228,7 @@ function Workspace({ roomId }) {
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
-                    {ws.classroomStudent && (
+          {ws.classroomStudent && (
             <TaskBar
               task={taskState.task}
               submission={taskState.submission}
@@ -262,7 +262,10 @@ function Workspace({ roomId }) {
             readOnly={!fileEditable || live.status !== "connected"}
             editorTheme={settings.theme}
             fontSize={settings.fontSize}
-            onMount={(ed) => { editorRef.current = ed; setEditor(ed); }}
+            onMount={(ed) => {
+              editorRef.current = ed;
+              setEditor(ed);
+            }}
             onProblems={handleProblems}
           />
           <BottomPanel
@@ -276,17 +279,15 @@ function Workspace({ roomId }) {
           />
         </main>
 
-
-
         <ParticipantsPanel
           participants={people}
-          chat={{ ...chat, clearUnread: chat.clearUnread }}
+          chat={chat}
           meId={user.id}
           disabled={live.status !== "connected"}
           onTabChange={(name) => setChatOpen(name === "chat")}
         />
-
       </div>
+
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
     </div>
   );

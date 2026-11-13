@@ -4,7 +4,7 @@ import Invite from "../models/Invite.js";
 import RoomParticipant from "../models/RoomParticipant.js";
 import { env } from "../config/env.js";
 import { notifyRoomChanged } from "../sockets/io.js";
-
+import { ensureStudentFile } from "../utils/studentFiles.js";
 
 function publicInvite(i) {
   return {
@@ -86,6 +86,7 @@ export async function acceptInvite(req, res) {
     existing.role = invite.role;
     await existing.save();
     await Invite.updateOne({ _id: invite._id }, { $inc: { uses: 1 } });
+      if (invite.role === "editor") await ensureStudentFile(invite.room, req.user.id);
     notifyRoomChanged(roomId);
     return res.json({ roomId, role: existing.role, changed: true });
   }
@@ -96,6 +97,7 @@ export async function acceptInvite(req, res) {
     if (err.code !== 11000) throw err; // two clicks at once: already joined, fine
   }
   await Invite.updateOne({ _id: invite._id }, { $inc: { uses: 1 } });
+    if (invite.role === "editor") await ensureStudentFile(invite.room, req.user.id);
   notifyRoomChanged(roomId);
 
   res.status(201).json({ roomId, role: invite.role, changed: true });
