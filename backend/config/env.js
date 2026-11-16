@@ -20,4 +20,8 @@ export const env = {
     executionProvider: process.env.EXECUTION_PROVIDER || "judge0", // "judge0" or "mock"
   judge0Url: process.env.JUDGE0_URL || "https://ce.judge0.com",
   judge0Token: process.env.JUDGE0_AUTH_TOKEN || "", // only for hosts that need a key
+    aiProvider: process.env.AI_PROVIDER || "mock", // "mock" or "anthropic"
+  anthropicKey: process.env.ANTHROPIC_API_KEY || "",
+  aiModel: process.env.AI_MODEL || "claude-sonnet-5-5",
+  
 };

@@ -37,3 +37,13 @@ export const examLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many requests. Slow down." },
 });
+
+// AI calls cost money: 8 per minute per logged-in user
+export const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 8,
+  keyGenerator: (req) => req.user.id, // runs after `protect`
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "You are asking the assistant too fast. Wait a moment." },
+});

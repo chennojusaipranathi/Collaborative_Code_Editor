@@ -93,3 +93,12 @@ export const gradeSchema = z.object({
   grade: z.number({ message: "Grade must be a number" }).min(0, "Grade must be 0 to 100").max(100, "Grade must be 0 to 100"),
   feedback: z.string().trim().max(1000, "Feedback is too long").default(""),
 });
+
+export const aiSchema = z
+  .object({
+    action: z.enum(["explain", "bugs", "improve", "ask"], { message: "Unknown action" }),
+    fileName: z.string().trim().min(1).max(100),
+    code: z.string().min(1, "There is no code to look at").max(20000, "The file is too long for the assistant (20,000 characters)"),
+    question: z.string().trim().max(500, "Keep the question under 500 characters").default(""),
+  })
+  .refine((d) => d.action !== "ask" || d.question.length > 0, { message: "Type a question first", path: ["question"] });

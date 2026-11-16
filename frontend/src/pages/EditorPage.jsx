@@ -285,13 +285,19 @@ function Workspace({ roomId }) {
           />
         </main>
 
-        <ParticipantsPanel
+                <ParticipantsPanel
           participants={people}
           chat={chat}
           meId={user.id}
           disabled={live.status !== "connected"}
           onTabChange={(name) => setChatOpen(name === "chat")}
+          roomId={roomId}
+          aiContext={{
+            fileName: ws.activeFile?.name,
+            code: ws.activeFile?.content,
+          }}
         />
+
       </div>
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}

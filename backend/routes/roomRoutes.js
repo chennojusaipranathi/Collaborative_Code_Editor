@@ -9,10 +9,10 @@ import messageRoutes from "./messageRoutes.js";
 import snapshotRoutes from "./snapshotRoutes.js";
 import { protect } from "../middleware/auth.js";
 import { requireRoomRole } from "../middleware/roomAccess.js";
-import { runLimiter,examLimiter } from "../middleware/rateLimit.js";
+import { runLimiter,examLimiter,aiLimiter } from "../middleware/rateLimit.js";
 import { validate} from "../middleware/validate.js";
 import {
-  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema,taskSchema,examSchema, openSchema, saveSessionSchema, eventSchema, submitSessionSchema, gradeSchema
+  createRoomSchema, joinRoomSchema, runSchema, changeRoleSchema, createInviteSchema,lockSchema,taskSchema,examSchema, openSchema, saveSessionSchema, eventSchema, submitSessionSchema, gradeSchema,aiSchema
 } from "../utils/validators.js";
 
 import { setLocked } from "../controllers/roomController.js";
@@ -23,6 +23,8 @@ import {
   getExam, saveExam, setExamOpen, deleteExam, startExam, saveSession, recordEvent,
   submitSession, listSessions, getSession, gradeSession,similarity
 } from "../controllers/examController.js";
+
+import { askAssistant } from "../controllers/aiController.js";
 
 
 const router = Router();
@@ -68,5 +70,7 @@ router.put("/:roomId/exam/session", requireRoomRole("editor"), examLimiter, vali
 router.post("/:roomId/exam/session/event", requireRoomRole("editor"), examLimiter, validate(eventSchema), recordEvent);
 router.post("/:roomId/exam/session/submit", requireRoomRole("editor"), examLimiter, validate(submitSessionSchema), submitSession);
 router.get("/:roomId/exam/similarity", requireRoomRole("owner"), similarity);
+router.post("/:roomId/ai", requireRoomRole("viewer"), aiLimiter, validate(aiSchema), askAssistant);
+
 
 export default router;
