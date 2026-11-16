@@ -154,8 +154,8 @@ function Workspace({ roomId }) {
     );
   }
 
-    // Exam students work on the exam page, never in the shared editor
-  if (ws.room.mode === "exam" && ws.room.myRole !== "owner") {
+     // Exam rooms never use the shared editor. Everyone works on the exam page.
+  if (ws.room.mode === "exam") {
     return <Navigate to={`/room/${roomId}/exam`} replace />;
   }
   

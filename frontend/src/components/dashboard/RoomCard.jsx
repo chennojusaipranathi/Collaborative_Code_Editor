@@ -5,10 +5,12 @@ import { timeAgo } from "../../utils/timeAgo";
 
 export default function RoomCard({ room }) {
   const mode = ROOM_MODES[room.mode];
+  // Exam rooms open the exam page (setup for the teacher, the exam for students)
+  const target = room.mode === "exam" ? `/room/${room.id}/exam` : `/room/${room.id}`;
 
   return (
     <Link
-      to={`/room/${room.id}`}
+      to={target}
       className="block rounded-xl border border-line bg-surface p-5 transition-colors hover:border-indigo-400"
     >
       <div className="mb-3 flex items-center justify-between">

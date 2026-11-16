@@ -17,3 +17,20 @@ export const sendEvent = (roomId, type) =>
 
 export const submitExam = (roomId, code) =>
   request(`${base(roomId)}/session/submit`, { method: "POST", body: { code }, token: token() });
+
+// ---- teacher ----
+
+// Create or change the exam. Returns { title, durationMinutes, open, problem }
+export async function saveExam(roomId, { title, durationMinutes, problem }) {
+  const data = await request(base(roomId), {
+    method: "PUT",
+    body: { title, durationMinutes, problem },
+    token: token(),
+  });
+  return data.exam;
+}
+
+export const setExamOpen = (roomId, open) =>
+  request(`${base(roomId)}/open`, { method: "PATCH", body: { open }, token: token() });
+
+export const deleteExam = (roomId) => request(base(roomId), { method: "DELETE", token: token() });

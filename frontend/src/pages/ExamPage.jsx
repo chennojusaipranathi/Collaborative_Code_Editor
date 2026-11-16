@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
-import { CheckCircle2, ClipboardList, FolderX, Play, RefreshCw, Send, ShieldAlert, Timer } from "lucide-react";
+import { CheckCircle2, ClipboardList, FolderX, Lock, Pencil, Play, RefreshCw, Send, Timer, Trash2, Unlock } from "lucide-react";
 import useTheme from "../hooks/useTheme";
 import useCountdown from "../hooks/useCountdown";
-import { getExam, startExam, saveCode, sendEvent, submitExam } from "../services/examApi";
+import { getExam, startExam, saveCode, sendEvent, submitExam, setExamOpen, deleteExam } from "../services/examApi";
 import { runCode, listRuns } from "../services/executionService";
 import { monacoLanguage } from "../utils/fileLanguage";
 import { formatTime } from "../utils/formatTime";
@@ -13,6 +13,7 @@ import Button from "../components/common/Button";
 import ThemeToggle from "../components/common/ThemeToggle";
 import TelemetryNotice from "../components/common/TelemetryNotice";
 import BottomPanel from "../components/editor/BottomPanel";
+import ExamSetupModal from "../components/exam/ExamSetupModal";
 
 const SAVE_DELAY_MS = 2000;
 
@@ -43,6 +44,8 @@ function ExamView({ roomId }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [starting, setStarting] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkedAt, setCheckedAt] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -54,7 +57,27 @@ function ExamView({ roomId }) {
     };
   }, [roomId]);
 
-  const reload = () => getExam(roomId).then(setData).catch((err) => setError(err.message));
+  const reload = useCallback(async () => {
+    setChecking(true);
+    try {
+      setData(await getExam(roomId));
+      setCheckedAt(new Date());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setChecking(false);
+    }
+  }, [roomId]);
+
+  // While a student waits for the teacher, check again every 5 seconds
+  const waiting = Boolean(
+    data && data.myRole !== "owner" && !data.session && (!data.exam || !data.exam.open)
+  );
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(reload, 5000);
+    return () => clearInterval(id);
+  }, [waiting, reload]);
 
   const start = async () => {
     setStarting(true);
@@ -68,6 +91,8 @@ function ExamView({ roomId }) {
       setStarting(false);
     }
   };
+
+  // ---- No hooks below this line, because these may return early ----
 
   if (error) {
     return (
@@ -87,23 +112,24 @@ function ExamView({ roomId }) {
     );
   }
 
+  // Teacher (room owner): set up the exam, open or close it, review results
   if (data.myRole === "owner") {
-    return (
-      <Centered>
-        <EmptyState icon={ShieldAlert} title="Students only" text="You own this exam. Review student work on the Submissions page.">
-          <Button to={`/room/${roomId}/submissions`}>View submissions</Button>
-        </EmptyState>
-      </Centered>
-    );
+    return <TeacherPanel roomId={roomId} data={data} setData={setData} />;
   }
 
   if (!data.exam) {
     return (
       <Centered>
         <EmptyState icon={ClipboardList} title="No exam yet" text="Your teacher has not set up the exam.">
-          <Button variant="secondary" onClick={reload}>
-            <RefreshCw size={16} /> Check again
+          <Button variant="secondary" onClick={reload} disabled={checking}>
+            <RefreshCw size={16} className={checking ? "animate-spin" : ""} />
+            {checking ? "Checking..." : "Check again"}
           </Button>
+          {checkedAt && (
+            <p className="mt-2 text-xs text-muted">
+              Last checked {checkedAt.toLocaleTimeString()}. This page checks again by itself.
+            </p>
+          )}
         </EmptyState>
       </Centered>
     );
@@ -134,9 +160,15 @@ function ExamView({ roomId }) {
           ) : (
             <>
               <p className="text-sm text-amber-400">The teacher has not opened the exam yet.</p>
-              <Button variant="secondary" onClick={reload} className="w-full">
-                <RefreshCw size={16} /> Check again
+              <Button variant="secondary" onClick={reload} disabled={checking} className="w-full">
+                <RefreshCw size={16} className={checking ? "animate-spin" : ""} />
+                {checking ? "Checking..." : "Check again"}
               </Button>
+              {checkedAt && (
+                <p className="text-center text-xs text-muted">
+                  Last checked {checkedAt.toLocaleTimeString()}. This page checks again by itself.
+                </p>
+              )}
             </>
           )}
         </div>
@@ -166,8 +198,8 @@ function ExamView({ roomId }) {
             <p className="text-sm text-muted">Not graded yet.</p>
           )}
           <div className="flex justify-center gap-2 pt-2">
-            <Button variant="secondary" onClick={reload}>
-              <RefreshCw size={16} /> Refresh result
+            <Button variant="secondary" onClick={reload} disabled={checking}>
+              <RefreshCw size={16} className={checking ? "animate-spin" : ""} /> Refresh result
             </Button>
             <Button to="/dashboard">Back to dashboard</Button>
           </div>
@@ -192,6 +224,106 @@ function ExamView({ roomId }) {
   );
 }
 
+// ---------- TEACHER VIEW ----------
+function TeacherPanel({ roomId, data, setData }) {
+  const [showSetup, setShowSetup] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const { exam, problem } = data;
+
+  const toggleOpen = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await setExamOpen(roomId, !exam.open);
+      setData((d) => ({ ...d, exam: { ...d.exam, open: res.open } }));
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm("Remove this exam and every student's session? This cannot be undone.")) return;
+    setMessage("");
+    try {
+      await deleteExam(roomId);
+      setData((d) => ({ ...d, exam: null, problem: null, session: null }));
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  return (
+    <Centered>
+      <div className="w-full max-w-lg space-y-5 rounded-xl border border-line bg-surface p-8">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted">{data.room.name} · Teacher</p>
+          <h1 className="text-2xl font-bold text-ink">{exam ? exam.title : "No exam yet"}</h1>
+        </div>
+
+        {exam ? (
+          <>
+            <p className="text-sm text-muted">
+              Duration: <b className="text-ink">{exam.durationMinutes} minutes</b> ·{" "}
+              {exam.open ? (
+                <span className="text-green-400">Open: students can start</span>
+              ) : (
+                <span className="text-amber-400">Closed: students cannot start</span>
+              )}
+            </p>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-app p-3 text-xs text-ink">
+              {problem}
+            </pre>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={toggleOpen} disabled={busy}>
+                {exam.open ? <Lock size={16} /> : <Unlock size={16} />} {exam.open ? "Close exam" : "Open exam"}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowSetup(true)}>
+                <Pencil size={16} /> Edit exam
+              </Button>
+              <Button variant="secondary" to={`/room/${roomId}/submissions`}>
+                <ClipboardList size={16} /> Submissions
+              </Button>
+              <Button variant="secondary" onClick={remove}>
+                <Trash2 size={16} /> Remove
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted">Set up the exam first. Students can start once you open it.</p>
+            <Button onClick={() => setShowSetup(true)} className="w-full">
+              <ClipboardList size={16} /> Set up exam
+            </Button>
+          </>
+        )}
+
+        {message && <p className="text-sm text-red-400">{message}</p>}
+        <Button variant="secondary" to="/dashboard" className="w-full">Back to dashboard</Button>
+      </div>
+
+      {showSetup && (
+        <ExamSetupModal
+          roomId={roomId}
+          exam={exam}
+          problem={problem}
+          onClose={() => setShowSetup(false)}
+          onSaved={(saved) =>
+            setData((d) => ({
+              ...d,
+              exam: { title: saved.title, durationMinutes: saved.durationMinutes, open: saved.open },
+              problem: saved.problem,
+            }))
+          }
+        />
+      )}
+    </Centered>
+  );
+}
+
+// ---------- STUDENT WORKSPACE ----------
 function ExamWorkspace({ roomId, roomName, title, fileName, problem, session, serverNow, onSubmitted }) {
   const { theme } = useTheme();
   // The countdown uses the SERVER's clock, so a wrong local clock changes nothing
