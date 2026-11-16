@@ -5,6 +5,8 @@ import Room from "../models/Room.js";
 import RoomParticipant from "../models/RoomParticipant.js";
 import User from "../models/User.js";
 import { STARTER_FILES } from "../utils/starterFiles.js";
+import { shingleSet, overlap } from "../utils/similarity.js";
+
 
 const GRACE_MS = 5000; // tolerance for network delay on the last save or submit
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000; // typed in the last 2 minutes = coding
@@ -311,4 +313,51 @@ export async function submitSession(req, res) {
     { returnDocument: "after" }
   );
   res.json({ session: publicSession(done ?? (await ExamSession.findById(session._id))) });
+}
+
+// ---------- teacher: basic similarity estimate ----------
+
+const MIN_RUNS = 8; // too little code to compare fairly
+const MAX_COMPARED = 100;
+
+export async function similarity(req, res) {
+  const { roomId } = req.params;
+  const room = await loadExamRoom(roomId, res);
+  if (!room) return;
+
+  const exam = await Exam.findOne({ room: roomId }).select("_id");
+  if (!exam) return res.json({ results: [] });
+
+  const all = await ExamSession.find({ exam: exam._id });
+  for (const s of all) await expireIfNeeded(s);
+
+  // Only finished work is compared, so nobody is compared mid-exam
+  const done = all.filter((s) => s.submittedAt).slice(0, MAX_COMPARED);
+
+  // The starter code is shared by everyone, so it must not count as similarity
+  const starter = shingleSet(starterFor(room.language).content);
+  const sets = done.map((s) => shingleSet(s.code, starter));
+
+  const results = done.map((s, i) => {
+    if (sets[i].size < MIN_RUNS) {
+      return { studentId: String(s.student), percent: null, withName: null };
+    }
+    let best = 0;
+    let bestName = null;
+    for (let j = 0; j < done.length; j++) {
+      if (i === j || sets[j].size < MIN_RUNS) continue;
+      const score = overlap(sets[i], sets[j]);
+      if (score > best) {
+        best = score;
+        bestName = done[j].studentName;
+      }
+    }
+    return {
+      studentId: String(s.student),
+      percent: Math.round(best * 100),
+      withName: best > 0 ? bestName : null,
+    };
+  });
+
+  res.json({ results });
 }

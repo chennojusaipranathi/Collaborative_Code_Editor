@@ -21,7 +21,7 @@ import { getClassroom } from "../controllers/classroomController.js";
 import { getTask, saveTask, deleteTask, submitTask, listSubmissions } from "../controllers/taskController.js";
 import {
   getExam, saveExam, setExamOpen, deleteExam, startExam, saveSession, recordEvent,
-  submitSession, listSessions, getSession, gradeSession,
+  submitSession, listSessions, getSession, gradeSession,similarity
 } from "../controllers/examController.js";
 
 
@@ -67,6 +67,6 @@ router.post("/:roomId/exam/start", requireRoomRole("editor"), examLimiter, start
 router.put("/:roomId/exam/session", requireRoomRole("editor"), examLimiter, validate(saveSessionSchema), saveSession);
 router.post("/:roomId/exam/session/event", requireRoomRole("editor"), examLimiter, validate(eventSchema), recordEvent);
 router.post("/:roomId/exam/session/submit", requireRoomRole("editor"), examLimiter, validate(submitSessionSchema), submitSession);
-
+router.get("/:roomId/exam/similarity", requireRoomRole("owner"), similarity);
 
 export default router;
