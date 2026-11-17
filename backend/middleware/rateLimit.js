@@ -1,9 +1,13 @@
 import rateLimit from "express-rate-limit";
 
+// Automated tests send many requests quickly, so limits are off in test mode only
+const skip = () => process.env.NODE_ENV === "test";
+
 // Login and register: 10 attempts per 15 minutes per IP
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  skip,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many attempts. Please try again in 15 minutes." },
@@ -13,6 +17,7 @@ export const authLimiter = rateLimit({
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
+  skip,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Slow down." },
@@ -22,6 +27,7 @@ export const apiLimiter = rateLimit({
 export const runLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 10,
+  skip,
   keyGenerator: (req) => req.user.id, // runs after `protect`, so req.user exists
   standardHeaders: true,
   legacyHeaders: false,
@@ -32,7 +38,8 @@ export const runLimiter = rateLimit({
 export const examLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 120,
-  keyGenerator: (req) => req.user.id, // runs after `protect`
+  skip,
+  keyGenerator: (req) => req.user.id,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Slow down." },
@@ -42,7 +49,8 @@ export const examLimiter = rateLimit({
 export const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 8,
-  keyGenerator: (req) => req.user.id, // runs after `protect`
+  skip,
+  keyGenerator: (req) => req.user.id,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "You are asking the assistant too fast. Wait a moment." },

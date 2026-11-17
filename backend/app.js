@@ -2,15 +2,11 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import { env } from "./config/env.js";
-import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
+import inviteRoutes from "./routes/inviteRoutes.js";
 import { apiLimiter } from "./middleware/rateLimit.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
-import http from "http";
-import { initSockets } from "./sockets/index.js";
-import { flushAll } from "./sockets/docStore.js";
-import inviteRoutes from "./routes/inviteRoutes.js";
 
 const app = express();
 
@@ -20,7 +16,6 @@ app.use(cors({ origin: env.clientUrl }));
 // Read JSON bodies, but refuse huge ones
 app.use(express.json({ limit: "1mb" }));
 
-app.use("/api/invites", inviteRoutes);
 // Health check: reports database state (not rate limited, monitors call it)
 app.get("/api/health", (_req, res) => {
   const dbConnected = mongoose.connection.readyState === 1;
@@ -34,24 +29,11 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
-
 app.use("/api/rooms", roomRoutes);
+app.use("/api/invites", inviteRoutes);
 
 // These two must come last, in this order
 app.use(notFound);
 app.use(errorHandler);
 
-await connectDB();
-
-const server = http.createServer(app);
-initSockets(server);
-
-server.listen(env.port, () => {
-  console.log(`CodeSync backend running on http://localhost:${env.port}`);
-});
-
-// Save open documents when the server is stopped (Ctrl + C)
-process.on("SIGINT", async () => {
-  await flushAll();
-  process.exit(0);
-});
+export default app;
