@@ -1,15 +1,18 @@
-import { env } from "../../config/env.js";
-import * as anthropic from "./anthropicProvider.js";
-import * as mock from "./mockProvider.js";
+import * as gemini from "./geminiProvider.js";
+import * as openai from "./openaiProvider.js";
+import * as groq from "./groqProvider.js";
+import { buildRequest } from "./prompt.js";
 
-const providers = { anthropic, mock };
+const providers = { gemini, openai, groq };
 
-// The only function the rest of the app calls
-export function askAI(request) {
-  const provider = providers[env.aiProvider];
-  if (!provider) throw new Error(`Unknown AI_PROVIDER: ${env.aiProvider}`);
-  if (env.aiProvider === "anthropic" && !env.anthropicKey) {
-    throw new Error("The AI is not configured on the server yet");
-  }
-  return provider.ask(request);
+export async function askAI(input) {
+  const name = process.env.AI_PROVIDER || "groq";
+  const provider = providers[name];
+  if (!provider) throw new Error(`Unknown AI_PROVIDER: ${name}`);
+
+  const { system, prompt } = buildRequest(input);
+  if (!prompt) throw new Error("Nothing to send: no question or code provided");
+
+  const answer = await provider.ask({ system, prompt });
+  return { answer, provider: name };
 }
