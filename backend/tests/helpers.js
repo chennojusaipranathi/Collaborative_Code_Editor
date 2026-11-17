@@ -115,5 +115,5 @@ export async function startTestServer() {
     await mongoose.disconnect();
   }
 
-  return { call, makeUser, connectSocket, emit, waitFor, close, models: mongoose.models };
+  return { call, makeUser, connectSocket, emit, waitFor, close,baseUrl, models: mongoose.models };
 }

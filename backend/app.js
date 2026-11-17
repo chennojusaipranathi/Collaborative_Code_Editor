@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import mongoose from "mongoose";
 import { env } from "./config/env.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -10,8 +11,28 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
-// Allow only our frontend to call this API
-app.use(cors({ origin: env.clientUrl }));
+// Behind Render's proxy, req.ip would be the proxy's address for everyone.
+// Trusting one proxy hop makes the rate limits count real clients.
+if (env.isProduction) app.set("trust proxy", 1);
+
+// Safe default headers (also removes X-Powered-By)
+app.use(
+  helmet({
+    // The frontend lives on another origin and reads our JSON with CORS
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Only the listed frontends may call this API from a browser
+app.use(
+  cors({
+    origin(origin, callback) {
+      // No Origin header means it is not a browser page (curl, tests, health checks)
+      if (!origin || env.allowedOrigins.includes(origin)) return callback(null, true);
+      callback(null, false); // no CORS headers, so the browser blocks the response
+    },
+  })
+);
 
 // Read JSON bodies, but refuse huge ones
 app.use(express.json({ limit: "1mb" }));

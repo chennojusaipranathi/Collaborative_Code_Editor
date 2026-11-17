@@ -10,8 +10,9 @@ import { setIO } from "./io.js";
 import { registerClassroomHandlers } from "./classroomHandlers.js";
 
 export function initSockets(httpServer) {
-  const io = new Server(httpServer, {
-    cors: { origin: env.clientUrl }, // same rule as the REST API
+     const io = new Server(httpServer, {
+    cors: { origin: env.allowedOrigins },
+    maxHttpBufferSize: 1e6, // refuse a single socket message bigger than 1 MB
   });
     setIO(io);
 
