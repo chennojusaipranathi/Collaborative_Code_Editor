@@ -14,8 +14,11 @@ server.listen(env.port, () => {
   console.log(`CodeSync backend running on http://localhost:${env.port}`);
 });
 
-// Save open documents when the server is stopped (Ctrl + C)
-process.on("SIGINT", async () => {
+// Save open documents when the server stops: Ctrl + C locally (SIGINT),
+// or when Render redeploys or restarts it (SIGTERM)
+async function shutDown() {
   await flushAll();
   process.exit(0);
-});
+}
+process.on("SIGINT", shutDown);
+process.on("SIGTERM", shutDown);
