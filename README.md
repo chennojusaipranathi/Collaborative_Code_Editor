@@ -534,4 +534,4 @@ These are deliberate trade-offs for a project at this scale.
 
 ## Author
 
-TODO: your name, college, department, year, and guide's name.
+CH.SAI PRANATHI
